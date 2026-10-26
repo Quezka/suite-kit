@@ -6,8 +6,8 @@ from quezka_ui import uiscale
 
 
 def test_automatic_scale_depends_on_the_screen():
-    assert uiscale.factor("auto", 768) == 1.15  # comfortable even on a small screen
-    assert uiscale.factor("auto", 1080) == 1.15 and uiscale.factor("auto", None) == 1.15
+    assert uiscale.factor("auto", 768) == 1.0  # the system's own size, on any screen
+    assert uiscale.factor("auto", 1080) == 1.0 and uiscale.factor("auto", None) == 1.0
     assert uiscale.factor("115", 768) == 1.15 and uiscale.factor("200", 2160) == 2.0
     assert uiscale.factor("nonsense", 768) == 1.0
 

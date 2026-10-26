@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.1] - 2026-10-26
+
+- "Automatic" interface size is the system's own size (100%), not 115%: the comfortable look is already larger in its
+  palette and captions, and the extra zoom made everything too big. 115% and up stay one choice away in Settings.
+
 ## [0.3.0] - 2026-10-26
 
 The comfortable look becomes the suite's: Folio's and Facet's palette (darker text, firmer borders, nothing pale that
