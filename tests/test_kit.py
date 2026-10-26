@@ -1,0 +1,74 @@
+import pytest
+
+from PySide6.QtWidgets import QApplication
+
+from quezka_ui import app as kit_app
+from quezka_ui import i18n, icons, theme
+from quezka_ui.widgets import Card, Page, Segmented, scrolling
+
+LOCALES = "tests.fake_locales"
+
+
+@pytest.fixture(scope="module")
+def qt():
+    application = kit_app.create_application(["kit"], name="KitTest", app_id="io.github.quezka.KitTest",
+                                             icon=icons.APP_ICON, locale_package=LOCALES)
+    i18n.install("en", application)
+    return application
+
+
+def test_the_kit_carries_every_apps_icons_and_apps_can_add_their_own():
+    for name in ("plus", "moon", "drop", "align", "gantt", "database", "link", "arrow-up-right"):
+        assert name in icons._PATHS
+    assert icons._PATHS["link"] != icons._PATHS["arrow-up-right"]  # the chain and the arrow
+    icons.register({"kit-test-icon": "<circle cx='12' cy='12' r='4'/>"})
+    icons.register({"kit-test-icon": "<circle cx='12' cy='12' r='4'/>"})  # again, the same: fine
+    with pytest.raises(ValueError):
+        icons.register({"plus": "<path d='M0 0'/>"})  # a name can't change its drawing
+    assert "currentColor" not in icons.svg("plus", "#123456") and "#123456" in icons.svg("plus", "#123456")
+
+
+def test_catalogues_come_from_the_apps_package_and_text_falls_back_to_english(qt):
+    assert i18n.install("it", qt) == "it"
+    assert i18n._("Hello") == "Ciao" and i18n._("Unknown") == "Unknown"
+    assert i18n.C_("button", "Hello") == "Ciao"
+    assert i18n.plural(2, "entity") == "2 entità"
+    i18n.install("ru", qt)
+    assert i18n.plural(5, "entity") == "5 сущностей" and i18n.plural(2, "entity") == "2 сущности"
+    i18n.install("en", qt)
+    assert i18n._("Hello") == "Hello"
+
+
+def test_plural_accepts_a_whole_word_or_an_ending_like_the_apps_always_did(qt):
+    i18n.install("en", qt)
+    assert i18n.plural(1, "class", "es") == "1 class" and i18n.plural(3, "class", "es") == "3 classes"
+    assert i18n.plural(3, "entity", "entities") == "3 entities"
+    assert i18n.plural(2, "event") == "2 events" and i18n.plural(0, "event") == "0 events"
+
+
+def test_light_and_dark_themes_have_the_same_tokens_and_switch(qt):
+    manager = theme.manager()
+    for mode in ("light", "dark", "system"):
+        manager.set_mode(mode)
+        assert theme.current().accent
+    assert theme.LIGHT.accent != theme.DARK.accent
+    assert theme.LIGHT.__dict__.keys() == theme.DARK.__dict__.keys()
+    assert theme.disabled(theme.LIGHT) != theme.disabled(theme.DARK)
+
+
+def test_page_card_segmented_and_scrolling_build(qt):
+    page = Page(margins=(10, 10, 10, 10), spacing=4)
+    page.title.setText("T")
+    page.leading.addWidget(Segmented([("a", "A"), ("b", "B")]))
+    card = Card("Title")
+    page.root.addWidget(scrolling(card.body_layout if hasattr(card, "body_layout") else card.body))
+    page.show()
+    qt.processEvents()
+    assert page.minimumSizeHint().height() < 400 and not page.grab().isNull()
+    page.close()
+
+
+def test_create_application_sets_the_apps_identity(qt):
+    assert QApplication.applicationName() == "KitTest"
+    assert QApplication.desktopFileName() == "io.github.quezka.KitTest"
+    assert not QApplication.windowIcon().isNull()
