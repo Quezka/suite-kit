@@ -10,8 +10,8 @@ import os
 
 from PySide6.QtCore import QSettings
 
-CHOICES = ("auto", "100", "115", "130", "150", "175", "200")  # percent
-STANDARD = 1.0  # "automatic" is Qt's own size (115% and up are one click away in Settings)
+CHOICES = ("auto", "80", "90", "100", "115", "130", "150", "175", "200")  # percent
+STANDARD = 0.85  # "automatic": a compact interface (100% and up are one click away in Settings)
 
 
 def chosen() -> str:
@@ -24,7 +24,7 @@ def set_chosen(choice: str):
 
 
 def factor(choice: str, screen_height: int | None) -> float:
-    """The scale factor for a choice; "auto" is the system's own size, whatever the screen."""
+    """The scale factor for a choice; "auto" is the compact standard size, whatever the screen."""
     if choice == "auto":
         return STANDARD
     return int(choice) / 100 if choice in CHOICES else 1.0

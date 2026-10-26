@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.0] - 2026-10-26
+
+- "Automatic" interface size is a compact 85% (the system's size was still too large with the comfortable palette).
+  New 80% and 90% choices; 100% and up stay in Settings.
+
 ## [0.3.1] - 2026-10-26
 
 - "Automatic" interface size is the system's own size (100%), not 115%: the comfortable look is already larger in its
