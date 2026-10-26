@@ -10,6 +10,10 @@ from . import fit, i18n, icons, leave_on_enter, theme, uiscale
 
 
 BASE_PT = 9.0
+THEMED_CLASSES = ("QLabel", "QPushButton", "QToolButton", "QCheckBox", "QRadioButton", "QGroupBox", "QMenu",
+                  "QMenuBar", "QAbstractItemView", "QListView", "QTreeView", "QTableView", "QListWidget", "QTreeWidget", "QTableWidget",
+                  "QHeaderView", "QTabBar", "QComboBox", "QLineEdit",
+                  "QTextEdit", "QPlainTextEdit", "QSpinBox", "QDateEdit", "QTimeEdit", "QStatusBar")
 
 
 def create_application(argv: list[str], *, name: str, app_id: str, icon: Path,
@@ -33,4 +37,8 @@ def create_application(argv: list[str], *, name: str, app_id: str, icon: Path,
     app.setWindowIcon(QIcon(str(icon)))
     i18n.install(app=app)
     theme.install(app)
+    # The desktop's theme gives these classes the system's own text size (11 pt on Ubuntu) whatever the
+    # application font says, so each one is set explicitly, and last (styling the application resets them).
+    for cls in THEMED_CLASSES:
+        app.setFont(font, cls)
     return app

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.1] - 2026-10-27
+
+Fixed: the compact text size only reached some widgets. The desktop's theme (GNOME on Wayland) gives labels, buttons,
+menus and lists the system's own 11 pt whatever the application font says, so those stayed "enormous". Every common
+widget class now gets the compact font explicitly, after the theme is installed.
+
 ## [0.5.0] - 2026-10-27
 
 Compact by construction, not by zoom: "Automatic" interface size is 100% again (nothing scaled), and the elements are
