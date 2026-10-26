@@ -95,3 +95,29 @@ def test_logo_tile_draws_on_a_white_rounded_tile(qt):
     from quezka_ui.widgets import logo_tile
     tile = logo_tile(str(icons.APP_ICON), str(icons.APP_ICON), 48, 2.0)
     assert tile.width() == 96 and tile.devicePixelRatio() == 2.0 and not tile.isNull()
+
+
+def test_high_contrast_is_a_mode_of_the_theme_and_is_remembered(qt):
+    manager = theme.manager()
+    manager.set_mode("light")
+    manager.set_contrast(False)
+    normal = theme.current()
+    manager.set_contrast(True)
+    high = theme.current()
+    assert high is theme.HIGH_LIGHT and high.text == "#000000" and high.border == "#000000"
+    manager.set_mode("dark")
+    assert theme.current() is theme.HIGH_DARK
+    manager.set_contrast(False)
+    assert theme.current() is theme.DARK and theme.current() != normal
+    from PySide6.QtCore import QSettings
+    assert str(QSettings().value("high_contrast")).lower() == "false"
+
+
+def test_the_comfortable_palette_keeps_text_dark_and_borders_firm():
+    def luminance(hex_):
+        r, g, b = (int(hex_[i:i + 2], 16) / 255 for i in (1, 3, 5))
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+    assert luminance(theme.LIGHT.text) < 0.1 and luminance(theme.LIGHT.muted) < 0.35  # nothing pale that matters
+    assert abs(luminance(theme.LIGHT.border) - luminance(theme.LIGHT.surface)) > 0.2  # borders you can see
+    assert "book-open" in icons._PATHS and "cube" in icons._PATHS and "ruler" in icons._PATHS

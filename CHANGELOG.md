@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0] - 2026-10-26
+
+The comfortable look becomes the suite's: Folio's and Facet's palette (darker text, firmer borders, nothing pale that
+matters), larger caption sizes, a High contrast mode (`theme.manager().set_contrast(True)`), table and header styling,
+and Folio's UI scale (automatic is 115%, choices up to 200%). 103 icons (Bivouac's, Folio's and Facet's added; Bivouac's open
+book is `book-open`). `theme.current_color`. Apps with their own scaling (Facet draws a 3D view) keep their own `uiscale`.
+
 ## [0.2.0] - 2026-10-26
 
 - `theme.set_brand(light, dark, css)`: an app's own colours and extra style rules on top of the suite's theme (Gantry's
