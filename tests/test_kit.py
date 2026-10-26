@@ -72,3 +72,26 @@ def test_create_application_sets_the_apps_identity(qt):
     assert QApplication.applicationName() == "KitTest"
     assert QApplication.desktopFileName() == "io.github.quezka.KitTest"
     assert not QApplication.windowIcon().isNull()
+
+
+def test_a_brand_changes_colours_and_adds_rules_without_forking_the_theme(qt):
+    from dataclasses import replace
+    original = (theme.LIGHT, theme.DARK, list(theme._extra_css))
+    try:
+        theme.set_brand(light={"accent": "#0a5ad6", "flag": "#b3121b"}, dark={"accent": "#4d94ff"},
+                        css=lambda t: f"#school {{ color: {t.text}; }}")
+        assert theme.LIGHT.accent == "#0a5ad6" and theme.DARK.accent == "#4d94ff"
+        assert theme.LIGHT.text == original[0].text  # everything else stays the suite's
+        assert "#school" in theme.stylesheet(theme.LIGHT) and "#0a5ad6" in theme.stylesheet(theme.LIGHT)
+        theme.set_brand(css=theme._extra_css[-1])  # the same rule twice is added once
+        assert len(theme._extra_css) == len(original[2]) + 1
+    finally:
+        theme.LIGHT, theme.DARK = original[0], original[1]
+        theme._extra_css[:] = original[2]
+    assert "#school" not in theme.stylesheet(theme.LIGHT)
+
+
+def test_logo_tile_draws_on_a_white_rounded_tile(qt):
+    from quezka_ui.widgets import logo_tile
+    tile = logo_tile(str(icons.APP_ICON), str(icons.APP_ICON), 48, 2.0)
+    assert tile.width() == 96 and tile.devicePixelRatio() == 2.0 and not tile.isNull()

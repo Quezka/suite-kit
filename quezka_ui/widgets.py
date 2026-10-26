@@ -1,8 +1,8 @@
 """Building blocks shared by the pages: header, cards, buttons, segmented controls."""
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont, QFontMetrics
+from PySide6.QtCore import QRectF, Qt, Signal
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QButtonGroup, QFrame, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QToolButton, QVBoxLayout,
     QWidget,
@@ -148,3 +148,26 @@ def label(text: str = "", role: str = "muted") -> QLabel:
 
 def caption(text: str) -> QLabel:
     return QLabel(text.upper(), objectName="tileCaption")
+
+
+def logo_tile(path: str, fallback: str, size: int, ratio: float = 1.0) -> QPixmap:
+    """A logo on a small white rounded tile, so dark logos show on the dark theme too."""
+    logo = QPixmap(path)
+    if logo.isNull():
+        logo = QPixmap(fallback)
+    px = int(size * ratio)
+    tile = QPixmap(px, px)
+    tile.fill(Qt.transparent)
+    p = QPainter(tile)
+    p.setRenderHint(QPainter.Antialiasing)
+    p.setRenderHint(QPainter.SmoothPixmapTransform)
+    p.setPen(Qt.NoPen)
+    p.setBrush(QColor("#ffffff"))
+    p.drawRoundedRect(QRectF(0, 0, px, px), px * 0.22, px * 0.22)
+    pad = px * 0.1
+    inner = logo.scaled(int(px - 2 * pad), int(px - 2 * pad), Qt.KeepAspectRatio,
+                        Qt.SmoothTransformation)
+    p.drawPixmap(int((px - inner.width()) / 2), int((px - inner.height()) / 2), inner)
+    p.end()
+    tile.setDevicePixelRatio(ratio)
+    return tile

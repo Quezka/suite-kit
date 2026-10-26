@@ -1,7 +1,7 @@
 """Design tokens, palette and style sheet. Follows the system light/dark setting."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from PySide6.QtCore import QObject, QSettings, Qt, Signal
 from PySide6.QtGui import QColor, QPalette
@@ -28,6 +28,8 @@ class Theme:
     on_accent: str
     danger: str
     success: str
+    warning: str = "#d97706"
+    flag: str = "#e5484d"  # a brand's signature colour, used sparingly (the school's red in Gantry)
 
 
 LIGHT = Theme(
@@ -36,7 +38,7 @@ LIGHT = Theme(
     border="#e2e4e9", hover="#e7e9ee",
     text="#16181d", muted="#636a75", faint="#9aa0aa",
     accent="#5b5bd6", accent_hover="#4c4cc4", accent_soft="#e6e6fb", on_accent="#ffffff",
-    danger="#e5484d", success="#30a46c",
+    danger="#e5484d", success="#30a46c", warning="#d97706", flag="#e5484d",
 )
 
 DARK = Theme(
@@ -45,10 +47,24 @@ DARK = Theme(
     border="#2a2c31", hover="#26282d",
     text="#ecedef", muted="#9ba1ab", faint="#6b7079",
     accent="#8182f0", accent_hover="#9394f5", accent_soft="#262747", on_accent="#ffffff",
-    danger="#ff6369", success="#3dd68c",
+    danger="#ff6369", success="#3dd68c", warning="#f5a524", flag="#ff6369",
 )
 
 RADIUS = 10
+
+_extra_css: list = []
+
+
+def set_brand(light: dict | None = None, dark: dict | None = None, css=None) -> None:
+    """Give the app its own colours without forking the theme: token overrides for the light and dark
+    themes (`{"accent": "#0a5ad6", ...}`) and an optional `css(theme) -> str` appended to the style
+    sheet for rules only this app has. Call once, before `theme.install`. A brand can't add new
+    tokens; ask the kit for them."""
+    global LIGHT, DARK
+    LIGHT = replace(LIGHT, **(light or {}))
+    DARK = replace(DARK, **(dark or {}))
+    if css is not None and css not in _extra_css:
+        _extra_css.append(css)
 
 
 MODES = ("system", "light", "dark")
@@ -318,4 +334,4 @@ def stylesheet(t: Theme) -> str:
     QSplitter::handle {{ background: transparent; }}
     QCalendarWidget QWidget {{ alternate-background-color: {t.raised}; }}
     QCalendarWidget QToolButton {{ border: none; background: transparent; }}
-    """
+    """ + "\n".join(rule(t) for rule in _extra_css)

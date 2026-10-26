@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.0] - 2026-10-26
+
+- `theme.set_brand(light, dark, css)`: an app's own colours and extra style rules on top of the suite's theme (Gantry's
+  school blue and red), instead of a forked theme. New tokens `warning` and `flag`.
+- `widgets.logo_tile` (a logo on a white rounded tile), from Gantry.
+
 ## [0.1.0] - 2026-10-26
 
 First extraction, from Quire, Ligature, Gantry and Missive: theme (with Ligature's disabled tint and drawing
