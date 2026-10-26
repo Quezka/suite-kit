@@ -35,7 +35,7 @@ def scrolling(content) -> "QScrollArea":
 class Page(QWidget):
     """A top-level page: padded, themed background, header row on top."""
 
-    def __init__(self, parent=None, margins=(28, 22, 28, 24), spacing=16):
+    def __init__(self, parent=None, margins=(20, 14, 20, 16), spacing=10):
         super().__init__(parent)
         self.setObjectName("page")
         self.setAttribute(Qt.WA_StyledBackground, True)
@@ -65,12 +65,12 @@ class Page(QWidget):
 class Card(QFrame):
     """Rounded surface with an optional title row."""
 
-    def __init__(self, title: str | None = None, padding: int = 16, parent=None):
+    def __init__(self, title: str | None = None, padding: int = 12, parent=None):
         super().__init__(parent)
         self.setObjectName("card")
         self.body = QVBoxLayout(self)
         self.body.setContentsMargins(padding, padding, padding, padding)
-        self.body.setSpacing(10)
+        self.body.setSpacing(7)
         self.title_row = QHBoxLayout()
         self.title_row.setSpacing(8)
         if title:

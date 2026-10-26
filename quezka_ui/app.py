@@ -9,8 +9,11 @@ from PySide6.QtWidgets import QApplication
 from . import fit, i18n, icons, leave_on_enter, theme, uiscale
 
 
+BASE_PT = 9.0
+
+
 def create_application(argv: list[str], *, name: str, app_id: str, icon: Path,
-                       locale_package: str, min_font_pt: float | None = None) -> QApplication:
+                       locale_package: str) -> QApplication:
     """The application object, set up in the order that matters: the scale factor before Qt reads it,
     the language before any window is built, the theme before any widget exists."""
     icons.configure(icon, name.lower())
@@ -22,10 +25,9 @@ def create_application(argv: list[str], *, name: str, app_id: str, icon: Path,
         uiscale.apply_before_app()
     app = QApplication.instance() or QApplication(argv)
     app.setStyle("Fusion")
-    if min_font_pt:  # "bigger than the system default", for apps meant to be easy on the eyes
-        font = app.font()
-        font.setPointSizeF(max(font.pointSizeF(), min_font_pt))
-        app.setFont(font)
+    font = app.font()  # compact: never bigger than BASE_PT, whatever the desktop's own text size
+    font.setPointSizeF(min(font.pointSizeF(), BASE_PT) if font.pointSizeF() > 0 else BASE_PT)
+    app.setFont(font)
     leave_on_enter.install(app)  # Enter in a one-line box lets go of it
     fit.install(app)  # a dialog taller than the screen scrolls
     app.setWindowIcon(QIcon(str(icon)))

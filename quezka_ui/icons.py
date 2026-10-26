@@ -128,7 +128,7 @@ def svg(name: str, color: str, stroke: float = 2.0) -> str:
             f'stroke-linejoin="round">{_PATHS[name]}</svg>')
 
 
-def pixmap(name: str, color: str, size: int = 18, stroke: float = 2.0) -> QPixmap:
+def pixmap(name: str, color: str, size: int = 16, stroke: float = 2.0) -> QPixmap:
     app = QGuiApplication.instance()
     ratio = app.devicePixelRatio() if app else 1.0
     pm = QPixmap(int(size * ratio), int(size * ratio))
@@ -142,7 +142,7 @@ def pixmap(name: str, color: str, size: int = 18, stroke: float = 2.0) -> QPixma
     return pm
 
 
-def icon(name: str, color: str, checked_color: str | None = None, size: int = 18,
+def icon(name: str, color: str, checked_color: str | None = None, size: int = 16,
          disabled_color: str | None = None) -> QIcon:
     result = QIcon(pixmap(name, color, size))
     if checked_color:

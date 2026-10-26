@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0] - 2026-10-27
+
+Compact by construction, not by zoom: "Automatic" interface size is 100% again (nothing scaled), and the elements are
+smaller instead: text is never bigger than 9 pt (the stylesheet's sizes are about 14% smaller), paddings, radii and
+icons about 22% smaller, pages and cards use tighter margins. `create_application` no longer takes `min_font_pt`.
+80% and 90% stay as choices for anyone who wants it even smaller.
+
 ## [0.4.0] - 2026-10-26
 
 - "Automatic" interface size is a compact 85% (the system's size was still too large with the comfortable palette).
