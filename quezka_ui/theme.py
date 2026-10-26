@@ -152,6 +152,27 @@ def current_color(role: str) -> QColor:
     return QColor(getattr(current(), role))
 
 
+SCHOOL_LIGHT = {"sidebar": "#eceef3", "accent": "#0a5ad6", "accent_hover": "#0047b3", "accent_soft": "#e2ecfd",
+                "warning": "#d97706", "flag": "#b3121b"}
+SCHOOL_DARK = {"sidebar": "#131519", "accent": "#4d94ff", "accent_hover": "#6aa6ff", "accent_soft": "#15264a",
+               "warning": "#f5a524", "flag": "#ff5c5c"}
+
+
+def _school_css(t: Theme) -> str:
+    return f"""
+    #school {{ color: {t.text}; font-weight: 600; font-size: 10pt; }}
+    #place {{ color: {t.muted}; font-size: 9.5pt; }}
+    """
+
+
+def school_brand(css=None) -> None:
+    """The I.T.S. "E. Alessandrini" look (blue and red) that Gantry and Bivouac share, plus the
+    `#school` / `#place` labels of the sidebar; `css(theme)` adds the app's own rules."""
+    set_brand(light=SCHOOL_LIGHT, dark=SCHOOL_DARK, css=_school_css)
+    if css is not None:
+        set_brand(css=css)
+
+
 def themed(apply) -> None:
     """Call `apply(theme)` now and again whenever the theme changes."""
     apply(current())
@@ -166,7 +187,7 @@ def themed(apply) -> None:
 
 def disabled(t: Theme) -> str:
     """Text and icons of things you can't use yet: clearly paler than muted text."""
-    return "#4a4e57" if t.dark else "#bcc0c8"
+    return "#8a909c" if t.dark else "#7a808c"
 
 
 def set_icon(widget, name: str, role: str = "muted", checked_role: str | None = None,

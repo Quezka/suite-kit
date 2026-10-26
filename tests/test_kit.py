@@ -121,3 +121,15 @@ def test_the_comfortable_palette_keeps_text_dark_and_borders_firm():
     assert luminance(theme.LIGHT.text) < 0.1 and luminance(theme.LIGHT.muted) < 0.35  # nothing pale that matters
     assert abs(luminance(theme.LIGHT.border) - luminance(theme.LIGHT.surface)) > 0.2  # borders you can see
     assert "book-open" in icons._PATHS and "cube" in icons._PATHS and "ruler" in icons._PATHS
+
+
+def test_the_school_brand_is_shared_and_apps_can_add_rules(qt):
+    original = (theme.LIGHT, theme.DARK, list(theme._extra_css))
+    try:
+        theme.school_brand(css=lambda t: "#only-here { color: red; }")
+        assert theme.LIGHT.accent == "#0a5ad6" and theme.DARK.accent == "#4d94ff" and theme.LIGHT.flag == "#b3121b"
+        sheet = theme.stylesheet(theme.LIGHT)
+        assert "#school" in sheet and "#place" in sheet and "#only-here" in sheet
+    finally:
+        theme.LIGHT, theme.DARK = original[0], original[1]
+        theme._extra_css[:] = original[2]
