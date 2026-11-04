@@ -4,7 +4,7 @@ Shared PySide6 toolkit for Quire, Ligature, Gantry, Missive, Bivouac, Natter, Fo
 copies each app had grown (plan: claude-memory `suite-unification-plan`).
 
 - Run tests: `.venv/bin/python -m pytest -q` (offscreen). Test an app against it with `pip install -e ../suite-kit` in the app's venv.
-- `icons._PATHS` is the union of every app's icons: no name may change its drawing. Ligature's old "link" arrow is now `arrow-up-right`; "link" is the chain.
+- Icons: Material Symbols by kit name (`symbols.py`, from `tools/make_symbols.py`), filled when checked. `icons._PATHS` is only the diagram notation, drawn by hand. A name keeps its meaning across apps. "link" is the chain, `arrow-up-right` the arrow.
 - Catalogues are the apps': `i18n.configure("<app>.presentation.locales")` before `i18n.install`.
 - `i18n.plural` accepts a whole plural or an ending (Ligature and Quire wrote it differently).
 - No app code in here: no domain, no file formats, no settings dialogs of one app.

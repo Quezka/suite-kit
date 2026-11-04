@@ -19,12 +19,18 @@ def qt():
 
 def test_the_kit_carries_every_apps_icons_and_apps_can_add_their_own():
     for name in ("plus", "moon", "drop", "align", "gantt", "database", "link", "arrow-up-right"):
-        assert name in icons._PATHS
-    assert icons._PATHS["link"] != icons._PATHS["arrow-up-right"]  # the chain and the arrow
+        assert name in icons.names()
+    assert icons.svg("link", "#000") != icons.svg("arrow-up-right", "#000")  # the chain and the arrow
+    assert icons.svg("home", "#000", filled=True) != icons.svg("home", "#000")  # selected is filled
+    assert icons.svg("bold", "#000", filled=True) == icons.svg("bold", "#000")  # nothing to fill: stays as it is
+    assert 'stroke="#000"' in icons.svg("entity", "#000")  # a notation stays a line drawing
     icons.register({"kit-test-icon": "<circle cx='12' cy='12' r='4'/>"})
     icons.register({"kit-test-icon": "<circle cx='12' cy='12' r='4'/>"})  # again, the same: fine
     with pytest.raises(ValueError):
-        icons.register({"plus": "<path d='M0 0'/>"})  # a name can't change its drawing
+        icons.register({"entity": "<path d='M0 0'/>"})  # a name can't change its drawing
+    plus = icons.svg("plus", "#000")
+    icons.register({"plus": "<path d='M0 0'/>"})  # and one with a Material symbol keeps the symbol
+    assert icons.svg("plus", "#000") == plus
     assert "currentColor" not in icons.svg("plus", "#123456") and "#123456" in icons.svg("plus", "#123456")
 
 
@@ -120,7 +126,7 @@ def test_the_comfortable_palette_keeps_text_dark_and_borders_firm():
 
     assert luminance(theme.LIGHT.text) < 0.1 and luminance(theme.LIGHT.muted) < 0.35  # nothing pale that matters
     assert abs(luminance(theme.LIGHT.border) - luminance(theme.LIGHT.surface)) > 0.2  # borders you can see
-    assert "book-open" in icons._PATHS and "cube" in icons._PATHS and "ruler" in icons._PATHS
+    assert {"book-open", "cube", "ruler"} <= icons.names()
 
 
 def test_the_school_brand_is_shared_and_apps_can_add_rules(qt):
