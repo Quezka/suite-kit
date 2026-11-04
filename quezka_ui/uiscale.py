@@ -10,6 +10,7 @@ import os
 
 from PySide6.QtCore import QSettings
 
+MARK = "QUEZKA_UI_SCALE_APPLIED"  # the QT_SCALE_FACTOR we set ourselves, so a restart can replace it
 CHOICES = ("auto", "80", "90", "100", "115", "130", "150", "175", "200")  # percent
 STANDARD = 1.0  # "automatic" leaves Qt alone: the interface is built compact (see theme.py), not scaled
 
@@ -55,11 +56,15 @@ def _screen_height() -> int | None:
 
 
 def apply_before_app():
-    """Set QT_SCALE_FACTOR from the choice. Does nothing when it's already set (by you, on
-    the command line) or when the choice leaves the scale alone."""
-    if "QT_SCALE_FACTOR" in os.environ:
+    """Set QT_SCALE_FACTOR from the choice. Does nothing when you set it yourself on the command line.
+    A value this function set earlier doesn't count as yours: a restart from Settings starts the new
+    copy with this copy's environment, and the new choice must win over it."""
+    current, ours = os.environ.get("QT_SCALE_FACTOR"), os.environ.get(MARK)
+    if current is not None and current != ours:
         return
-    choice = chosen()
-    value = factor(choice, None)
+    value = factor(chosen(), None)
     if value != 1.0:
-        os.environ["QT_SCALE_FACTOR"] = f"{value:g}"
+        os.environ["QT_SCALE_FACTOR"] = os.environ[MARK] = f"{value:g}"
+    elif ours is not None:
+        os.environ.pop("QT_SCALE_FACTOR", None)
+        os.environ.pop(MARK, None)

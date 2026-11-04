@@ -34,6 +34,23 @@ def test_the_scale_is_handed_to_qt_unless_already_set(monkeypatch):
     assert os.environ["QT_SCALE_FACTOR"] == "2"
 
 
+def test_a_restart_replaces_the_scale_it_set_but_never_yours(monkeypatch):
+    monkeypatch.delenv("QT_SCALE_FACTOR", raising=False)
+    monkeypatch.delenv(uiscale.MARK, raising=False)
+    monkeypatch.setattr(uiscale, "chosen", lambda: "130")
+    uiscale.apply_before_app()
+    assert os.environ["QT_SCALE_FACTOR"] == "1.3"
+    monkeypatch.setattr(uiscale, "chosen", lambda: "150")  # the new copy inherits this environment
+    uiscale.apply_before_app()
+    assert os.environ["QT_SCALE_FACTOR"] == "1.5"
+    monkeypatch.setattr(uiscale, "chosen", lambda: "auto")
+    uiscale.apply_before_app()
+    assert "QT_SCALE_FACTOR" not in os.environ and uiscale.MARK not in os.environ
+    monkeypatch.setenv("QT_SCALE_FACTOR", "2")  # by hand, on the command line
+    uiscale.apply_before_app()
+    assert os.environ["QT_SCALE_FACTOR"] == "2"
+
+
 def test_a_100_percent_choice_leaves_qt_alone(monkeypatch):
     monkeypatch.setattr(uiscale, "chosen", lambda: "100")
     monkeypatch.delenv("QT_SCALE_FACTOR", raising=False)

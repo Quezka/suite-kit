@@ -1,9 +1,9 @@
 """Keeping windows and dialogs inside the screen (a laptop at 1366x768 is small)."""
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, QObject, Qt
+from PySide6.QtCore import QEvent, QObject, QPoint, Qt
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtWidgets import QDialog, QFrame, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QAbstractButton, QDialog, QFrame, QMenu, QScrollArea, QVBoxLayout, QWidget
 
 MARGIN = 24  # room left for the title bar and panels
 
@@ -82,8 +82,41 @@ class _Fitter(QObject):
         return False
 
 
+MENU_GAP = 3  # pixels between a button and the menu it opens
+
+
+def menu_position(button_left: int, button_top: int, button_bottom: int, width: int, height: int, area) -> QPoint:
+    """Where a button's menu goes: under the button with their left edges lined up, above it when there is
+    no room below (a button at the bottom of the window), and never off the screen."""
+    x = max(area.left(), min(button_left, area.right() + 1 - width))
+    y = button_bottom + MENU_GAP
+    if y + height > area.bottom() + 1 and button_top - MENU_GAP - height >= area.top():
+        y = button_top - MENU_GAP - height
+    return QPoint(x, max(area.top(), min(y, area.bottom() + 1 - height)))
+
+
+class _MenuAligner(QObject):
+    """Qt puts a button's menu roughly under it, a few pixels off depending on the style and the scale. The
+    position is set while the menu is being shown, before the window exists on screen: on Wayland it can't
+    be moved afterwards."""
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.Show and isinstance(watched, QMenu):
+            button = watched.parent()
+            if isinstance(button, QAbstractButton) and button.menu() is watched:
+                top_left = button.mapToGlobal(QPoint(0, 0))
+                size = watched.sizeHint()
+                area = button.screen().availableGeometry()
+                watched.move(menu_position(top_left.x(), top_left.y(), top_left.y() + button.height(),
+                                           size.width(), size.height(), area))
+        return False
+
+
 def install(app) -> None:
-    """Watch every dialog the app shows (see _Fitter)."""
+    """Watch every dialog the app shows (see _Fitter) and every menu a button opens (see _MenuAligner)."""
     fitter = _Fitter(app)
     app.installEventFilter(fitter)
     app._dialog_fitter = fitter  # keep it alive
+    aligner = _MenuAligner(app)
+    app.installEventFilter(aligner)
+    app._menu_aligner = aligner

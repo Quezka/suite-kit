@@ -133,3 +133,37 @@ def test_the_school_brand_is_shared_and_apps_can_add_rules(qt):
     finally:
         theme.LIGHT, theme.DARK = original[0], original[1]
         theme._extra_css[:] = original[2]
+
+
+def test_a_button_menu_opens_exactly_under_the_button_or_above_when_there_is_no_room():
+    from PySide6.QtCore import QRect
+    from quezka_ui.fit import MENU_GAP, menu_position
+    area = QRect(0, 0, 1366, 768)
+    assert menu_position(100, 40, 70, 200, 300, area).toTuple() == (100, 70 + MENU_GAP)
+    assert menu_position(100, 700, 730, 200, 300, area).toTuple() == (100, 700 - MENU_GAP - 300)  # at the bottom
+    assert menu_position(1300, 40, 70, 200, 300, area).toTuple() == (1166, 70 + MENU_GAP)  # stays on the screen
+    assert menu_position(0, 300, 330, 200, 700, area).y() == 68  # too tall either way: still on the screen
+
+
+def test_the_aligner_moves_a_real_menu_when_it_shows():
+    from PySide6.QtCore import QPoint
+    from PySide6.QtWidgets import QApplication, QMenu, QPushButton
+    from quezka_ui import fit
+    app = QApplication.instance() or QApplication([])
+    fit.install(app)
+    button = QPushButton("Add")
+    menu = QMenu(button)
+    menu.addAction("One")
+    button.setMenu(menu)
+    button.resize(80, 30)
+    button.move(40, 20)
+    button.show()
+    app.processEvents()
+    menu.popup(QPoint(500, 500))  # wherever Qt or a style would have put it
+    app.processEvents()
+    corner = button.mapToGlobal(QPoint(0, 0))
+    area = button.screen().availableGeometry()
+    assert menu.pos() == fit.menu_position(corner.x(), corner.y(), corner.y() + button.height(),
+                                           menu.sizeHint().width(), menu.sizeHint().height(), area)
+    menu.close()
+    button.close()

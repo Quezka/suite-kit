@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.2] - 2026-11-04
+
+Fixed: changing the interface size and pressing Restart did nothing once a size other than 100% was in use (the new
+copy inherited the old `QT_SCALE_FACTOR` and took it for the user's own). A button's menu now opens exactly under the
+button, with its left edges lined up, above it when there is no room below, and always on the screen.
+
 ## [0.5.1] - 2026-10-27
 
 Fixed: the compact text size only reached some widgets. The desktop's theme (GNOME on Wayland) gives labels, buttons,
