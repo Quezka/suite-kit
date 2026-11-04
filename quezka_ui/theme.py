@@ -32,23 +32,23 @@ class Theme:
     flag: str = "#e5484d"  # a brand's signature colour, used sparingly (the school's red in Gantry)
 
 
-# Folio is meant to be easy on the eyes: darker text, firmer borders and no pale grey for
-# anything that matters (the other apps still use the lighter house palette).
+# Material 3 flavoured: tonal surfaces tinted by the accent, with dark text, firm borders where there are
+# borders, and no pale grey for anything that matters.
 LIGHT = Theme(
     dark=False,
-    bg="#f3f4f7", surface="#ffffff", raised="#eceef3", sidebar="#e6e8ee",
+    bg="#f6f5fc", surface="#ffffff", raised="#e9e8f6", sidebar="#eeedf8",
     border="#b9bec9", hover="#dfe2ea",
     text="#0e1116", muted="#3f4654", faint="#5d6573",
-    accent="#4b4bc8", accent_hover="#3b3bb0", accent_soft="#d9d9f8", on_accent="#ffffff",
+    accent="#4b4bc8", accent_hover="#3b3bb0", accent_soft="#dddcfb", on_accent="#ffffff",
     danger="#c4262c", success="#1f7a4d", warning="#b45309", flag="#c4262c",
 )
 
 DARK = Theme(
     dark=True,
-    bg="#0e0f11", surface="#17181b", raised="#212328", sidebar="#131416",
+    bg="#111119", surface="#1b1b25", raised="#28283a", sidebar="#16161f",
     border="#4a4e57", hover="#2c2f35",
     text="#f4f5f7", muted="#c3c8d2", faint="#98a0ad",
-    accent="#9a9bff", accent_hover="#b0b1ff", accent_soft="#33356a", on_accent="#0e0f11",
+    accent="#9a9bff", accent_hover="#b0b1ff", accent_soft="#35366b", on_accent="#0e0f11",
     danger="#ff7b80", success="#4fe39b", warning="#f5a524", flag="#ff7b80",
 )
 
@@ -152,9 +152,9 @@ def current_color(role: str) -> QColor:
     return QColor(getattr(current(), role))
 
 
-SCHOOL_LIGHT = {"sidebar": "#eceef3", "accent": "#0a5ad6", "accent_hover": "#0047b3", "accent_soft": "#e2ecfd",
+SCHOOL_LIGHT = {"bg": "#f4f6fc", "raised": "#e6ebf6", "sidebar": "#e9edf8", "accent": "#0a5ad6", "accent_hover": "#0047b3", "accent_soft": "#e2ecfd",
                 "warning": "#d97706", "flag": "#b3121b"}
-SCHOOL_DARK = {"sidebar": "#131519", "accent": "#4d94ff", "accent_hover": "#6aa6ff", "accent_soft": "#15264a",
+SCHOOL_DARK = {"bg": "#10131a", "surface": "#1a1d26", "raised": "#262b3a", "sidebar": "#151821", "accent": "#4d94ff", "accent_hover": "#6aa6ff", "accent_soft": "#15264a",
                "warning": "#f5a524", "flag": "#ff5c5c"}
 
 
@@ -216,6 +216,55 @@ def palette(t: Theme) -> QPalette:
     for role in (QPalette.Text, QPalette.WindowText, QPalette.ButtonText):
         p.setColor(QPalette.Disabled, role, QColor(t.faint))
     return p
+
+
+def material(t: Theme) -> str:
+    """The Material 3 shape of things: a pill for the current page, no borders on cards, round buttons and
+    soft corners, one filled colour per screen. High contrast keeps its stark lines and borders. In Qt a
+    `border-radius` bigger than half the widget's height is ignored and the widget goes square, so buttons
+    stop at 12 px."""
+    if t in (HIGH_LIGHT, HIGH_DARK):
+        return ""
+    return f"""
+    #sidebar {{ border-right: none; }}
+    #brand {{ font-weight: 800; }}
+    QToolButton#nav {{ border-radius: 16px; padding: 7px 12px; }}
+    QToolButton#nav:checked {{ color: {t.text}; font-weight: 700; }}
+    #card {{ border-radius: 16px; border: none; }}
+    #segmented {{ border: 1px solid {t.border}; border-radius: 12px; background: transparent; }}
+    QPushButton {{ border: none; border-radius: 12px; padding: 6px 14px; font-weight: 600; }}
+    QToolButton {{ border: none; border-radius: 12px; }}
+    QPushButton#primary {{ border-radius: 12px; font-weight: 700; padding: 6px 16px; }}
+    QPushButton#segment {{ border-radius: 10px; padding: 4px 10px; }}
+    QPushButton#segment:checked {{ background: {t.accent_soft}; color: {t.text}; border: none; }}
+    QToolButton#icon, QPushButton#icon, QToolButton#tool {{ border-radius: 12px; }}
+    QToolButton#startTile {{ border: none; border-radius: 16px; }}
+    QLineEdit, QPlainTextEdit, QTextEdit, QComboBox, QSpinBox, QDoubleSpinBox, QDateEdit, QTimeEdit {{
+        border-radius: 10px; }}
+    QPlainTextEdit#code, QTextBrowser#code, QTextBrowser#sheetBody {{ border-radius: 12px; }}
+    QTextBrowser#paper {{ border-radius: 12px; }}
+    QComboBox QAbstractItemView {{ border-radius: 12px; }}
+    QMenu {{ border-radius: 12px; border: 1px solid {t.border}; }}
+    QMenu::item {{ border-radius: 8px; }}
+    QToolTip {{ border-radius: 8px; }}
+    QListWidget {{ border: none; background: transparent; }}
+    QListWidget::item, QTreeWidget::item {{ border-radius: 10px; }}
+    QTableView {{ border: none; border-radius: 12px; }}
+    QHeaderView::section {{ border-bottom: 1px solid {t.border}; border-right: none; font-weight: 600; }}
+    QCheckBox::indicator, QListWidget::indicator, QTreeWidget::indicator {{ border-radius: 5px; border-width: 2px; }}
+    QScrollBar::handle {{ border-radius: 2px; }}
+    QTabWidget::pane {{ border: none; }}
+    QTabBar {{ qproperty-drawBase: 0; }}
+    QTabBar::tab {{ background: transparent; color: {t.muted}; padding: 7px 14px; margin: 2px;
+        border-radius: 12px; font-weight: 600; }}
+    QTabBar::tab:hover {{ background: {t.hover}; }}
+    QTabBar::tab:selected {{ background: {t.accent_soft}; color: {t.text}; }}
+    QProgressBar {{ background: {t.raised}; border: none; border-radius: 4px; max-height: 8px; color: transparent; }}
+    QProgressBar::chunk {{ background: {t.accent}; border-radius: 4px; }}
+    QSlider::groove:horizontal {{ background: {t.raised}; height: 6px; border-radius: 3px; }}
+    QSlider::sub-page:horizontal {{ background: {t.accent}; border-radius: 3px; }}
+    QSlider::handle:horizontal {{ background: {t.accent}; width: 16px; margin: -5px 0; border-radius: 8px; }}
+    """
 
 
 def stylesheet(t: Theme) -> str:
@@ -315,12 +364,12 @@ def stylesheet(t: Theme) -> str:
     QToolButton#startTile:hover {{ border-color: {t.accent}; background: {t.accent_soft}; }}
 
     /* ---- inputs ---- */
-    QLineEdit, QPlainTextEdit, QTextEdit, QComboBox, QDateEdit, QTimeEdit, QSpinBox {{
+    QLineEdit, QPlainTextEdit, QTextEdit, QComboBox, QDateEdit, QTimeEdit, QSpinBox, QDoubleSpinBox {{
         background: {t.surface}; color: {t.text}; border: 1px solid {t.border};
         border-radius: 6px; padding: 5px 8px; selection-background-color: {t.accent};
         selection-color: {t.on_accent}; }}
     QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QComboBox:focus,
-    QDateEdit:focus, QTimeEdit:focus, QSpinBox:focus {{
+    QDateEdit:focus, QTimeEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {{
         border: 1px solid {t.accent}; }}
     QLineEdit#search {{ background: {t.raised}; border-color: transparent; }}
     QLineEdit#search:focus {{ background: {t.surface}; border-color: {t.accent}; }}
@@ -342,15 +391,16 @@ def stylesheet(t: Theme) -> str:
     QComboBox::down-arrow, QDateEdit::down-arrow {{ image: url({chevron}); width: 11px;
         height: 11px; }}
     QTimeEdit::up-button, QTimeEdit::down-button {{ width: 0; border: none; }}
-    QSpinBox {{ padding-right: 19px; }}
-    QSpinBox::up-button, QSpinBox::down-button {{ subcontrol-origin: border; width: 17px;
+    QSpinBox, QDoubleSpinBox {{ padding-right: 19px; }}
+    QSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{ subcontrol-origin: border; width: 17px;
         border: none; background: transparent; }}
-    QSpinBox::up-button {{ subcontrol-position: top right; margin-top: 3px; }}
-    QSpinBox::down-button {{ subcontrol-position: bottom right; margin-bottom: 3px; }}
-    QSpinBox::up-button:hover, QSpinBox::down-button:hover {{ background: {t.hover};
+    QSpinBox::up-button, QDoubleSpinBox::up-button {{ subcontrol-position: top right; margin-top: 3px; }}
+    QSpinBox::down-button, QDoubleSpinBox::down-button {{ subcontrol-position: bottom right; margin-bottom: 3px; }}
+    QSpinBox::up-button:hover, QSpinBox::down-button:hover, QDoubleSpinBox::up-button:hover,
+    QDoubleSpinBox::down-button:hover {{ background: {t.hover};
         border-radius: 3px; }}
-    QSpinBox::up-arrow {{ image: url({chevron_up}); width: 9px; height: 9px; }}
-    QSpinBox::down-arrow {{ image: url({chevron}); width: 9px; height: 9px; }}
+    QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {{ image: url({chevron_up}); width: 9px; height: 9px; }}
+    QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {{ image: url({chevron}); width: 9px; height: 9px; }}
     /* The list opens straight under the box, not over it with the current item aligned. */
     QComboBox {{ combobox-popup: 0; }}
     QComboBox QAbstractItemView {{ background: {t.surface}; border: 1px solid {t.border};
@@ -401,4 +451,4 @@ def stylesheet(t: Theme) -> str:
     QSplitter::handle {{ background: transparent; }}
     QCalendarWidget QWidget {{ alternate-background-color: {t.raised}; }}
     QCalendarWidget QToolButton {{ border: none; background: transparent; }}
-    """ + "\n".join(rule(t) for rule in _extra_css)
+    """ + material(t) + "\n".join(rule(t) for rule in _extra_css)

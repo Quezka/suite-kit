@@ -10,3 +10,5 @@ copies each app had grown (plan: claude-memory `suite-unification-plan`).
 - No app code in here: no domain, no file formats, no settings dialogs of one app.
 - Releases: bump `__version__`, CHANGELOG, tag `vX.Y.Z`; apps pin the tag.
 - Commit as arsdom15@gmail.com.
+- The look is Material 3 for everyone (`theme.material`, not applied in high contrast); Facet builds its own sheet at scale and reuses `theme.material`. Font: Manrope, four static weights in `assets/` (OFL), loaded by `fonts.load()` in `create_application`.
+- `kinetic.py`: glide after a trackpad flick. Trackpad means a scroll phase (Wayland) or a TouchPad device (X11), never pixel deltas. It feeds the scrollbar's own wheel handling, so per-row lists work.

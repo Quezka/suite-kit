@@ -2,4 +2,4 @@
 
 Used by Quire, Ligature, Gantry, Missive and the rest, so a fix is made once.
 """
-__version__ = "0.5.3"
+__version__ = "0.6.0"

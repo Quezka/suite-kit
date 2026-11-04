@@ -6,14 +6,14 @@ from pathlib import Path
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
-from . import fit, i18n, icons, leave_on_enter, theme, uiscale
+from . import fit, fonts, i18n, icons, kinetic, leave_on_enter, theme, uiscale
 
 
 BASE_PT = 9.0
 THEMED_CLASSES = ("QLabel", "QPushButton", "QToolButton", "QCheckBox", "QRadioButton", "QGroupBox", "QMenu",
                   "QMenuBar", "QAbstractItemView", "QListView", "QTreeView", "QTableView", "QListWidget", "QTreeWidget", "QTableWidget",
                   "QHeaderView", "QTabBar", "QComboBox", "QLineEdit",
-                  "QTextEdit", "QPlainTextEdit", "QSpinBox", "QDateEdit", "QTimeEdit", "QStatusBar")
+                  "QTextEdit", "QPlainTextEdit", "QSpinBox", "QDoubleSpinBox", "QDateEdit", "QTimeEdit", "QStatusBar")
 
 
 def create_application(argv: list[str], *, name: str, app_id: str, icon: Path,
@@ -29,11 +29,15 @@ def create_application(argv: list[str], *, name: str, app_id: str, icon: Path,
         uiscale.apply_before_app()
     app = QApplication.instance() or QApplication(argv)
     app.setStyle("Fusion")
+    family = fonts.load()
     font = app.font()  # compact: never bigger than BASE_PT, whatever the desktop's own text size
+    if family:
+        font.setFamily(family)
     font.setPointSizeF(min(font.pointSizeF(), BASE_PT) if font.pointSizeF() > 0 else BASE_PT)
     app.setFont(font)
     leave_on_enter.install(app)  # Enter in a one-line box lets go of it
     fit.install(app)  # a dialog taller than the screen scrolls
+    kinetic.install(app)  # a flick on a trackpad keeps gliding
     app.setWindowIcon(QIcon(str(icon)))
     i18n.install(app=app)
     theme.install(app)

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0] - 2026-11-04
+
+A new look for the whole suite. Material 3 is now the kit's own look (it was Quire's add-on): tonal surfaces, a pill for
+the current page, borderless cards, round buttons, tabs, sliders and progress bars. High contrast stays as it was. The
+typeface is Manrope, shipped with the kit (`fonts.py`). A flick on a trackpad now keeps gliding in every scrolling widget
+(`kinetic.py`); a mouse wheel is left alone.
+
 ## [0.5.3] - 2026-11-04
 
 Three new icons: `pill`, `wallet`, `dumbbell`.
