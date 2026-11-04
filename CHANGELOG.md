@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.5.3] - 2026-11-04
+
+Three new icons: `pill`, `wallet`, `dumbbell`.
+
 ## [0.5.2] - 2026-11-04
 
 Fixed: changing the interface size and pressing Restart did nothing once a size other than 100% was in use (the new
