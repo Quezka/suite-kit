@@ -179,6 +179,7 @@ class SettingsSection(QWidget):
         self._end = QWidget()
         self.column.addWidget(self._end, 1)
         outer.addWidget(scrolling(self.column))
+        self.column.setContentsMargins(26, 22, 26, 24)  # `scrolling` sets its own margins on a layout
 
     def card(self, title: str | None = None) -> SettingsCard:
         card = SettingsCard(title)

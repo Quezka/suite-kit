@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.1] - 2026-11-08
+
+Settings sections keep their margins (the heading was pushed into the corner).
+
 ## [0.8.0] - 2026-11-08
 
 Liquid glass on top of Material 3, on by default: the window shows a soft colour wash (the accent from the top left, a
