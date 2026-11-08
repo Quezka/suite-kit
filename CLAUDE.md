@@ -12,3 +12,5 @@ copies each app had grown (plan: claude-memory `suite-unification-plan`).
 - Commit as arsdom15@gmail.com.
 - The look is Material 3 for everyone (`theme.material`, not applied in high contrast); Facet builds its own sheet at scale and reuses `theme.material`. Font: Manrope, four static weights in `assets/` (OFL), loaded by `fonts.load()` in `create_application`.
 - `kinetic.py`: glide after a trackpad flick. Trackpad means a scroll phase (Wayland) or a TouchPad device (X11), never pixel deltas. It feeds the scrollbar's own wheel handling, so per-row lists work.
+- Glass (0.8.0): `theme.glass(t)` is appended to the sheet when `ThemeManager.glass` (QSettings `glass`, default on) and not high contrast. Pages must stay transparent (`#page`) so the window's wash shows; give a frosted panel `objectName="glass"` or use `Card`. Text colours never change with glass.
+- Settings windows: build them from `quezka_ui.settings` (`SettingsWindow.section(title, icon).card().row/switch/wide`); editor dialogs call `dialog_shell(dialog, title)` after their layout is built.

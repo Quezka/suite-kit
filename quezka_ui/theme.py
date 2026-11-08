@@ -36,20 +36,20 @@ class Theme:
 # borders, and no pale grey for anything that matters.
 LIGHT = Theme(
     dark=False,
-    bg="#f6f5fc", surface="#ffffff", raised="#e9e8f6", sidebar="#eeedf8",
-    border="#b9bec9", hover="#dfe2ea",
-    text="#0e1116", muted="#3f4654", faint="#5d6573",
-    accent="#4b4bc8", accent_hover="#3b3bb0", accent_soft="#dddcfb", on_accent="#ffffff",
-    danger="#c4262c", success="#1f7a4d", warning="#b45309", flag="#c4262c",
+    bg="#f3f2ff", surface="#ffffff", raised="#e9e8ff", sidebar="#eceaff",
+    border="#b3b6cc", hover="#dedcf7",
+    text="#0b0d14", muted="#343b4d", faint="#4d5466",
+    accent="#4f46e5", accent_hover="#4338ca", accent_soft="#dcdbff", on_accent="#ffffff",
+    danger="#d0262d", success="#127a46", warning="#b45309", flag="#d0262d",
 )
 
 DARK = Theme(
     dark=True,
-    bg="#111119", surface="#1b1b25", raised="#28283a", sidebar="#16161f",
-    border="#4a4e57", hover="#2c2f35",
-    text="#f4f5f7", muted="#c3c8d2", faint="#98a0ad",
-    accent="#9a9bff", accent_hover="#b0b1ff", accent_soft="#35366b", on_accent="#0e0f11",
-    danger="#ff7b80", success="#4fe39b", warning="#f5a524", flag="#ff7b80",
+    bg="#0e0e19", surface="#1a1a2b", raised="#27273f", sidebar="#13131f",
+    border="#4b4e66", hover="#2d2d47",
+    text="#f6f7fb", muted="#cbcfdd", faint="#a2a8bb",
+    accent="#a9a6ff", accent_hover="#c3c0ff", accent_soft="#3b3984", on_accent="#0b0b14",
+    danger="#ff7b80", success="#4ade80", warning="#fbbf24", flag="#ff7b80",
 )
 
 # "High contrast" in Settings: black on white / white on black, thick lines.
@@ -72,6 +72,8 @@ HIGH_DARK = Theme(
 )
 
 RADIUS = 7
+GLASS = True  # follows ThemeManager.glass; module-level so `stylesheet(t)` keeps its signature
+GLOW = "#ec4899"  # the second colour of the glass wash, opposite the accent
 
 _extra_css: list = []
 
@@ -106,12 +108,19 @@ class ThemeManager(QObject):
         mode = QSettings().value("appearance", "system")
         self.mode = mode if mode in MODES else "system"
         self.contrast = str(QSettings().value("high_contrast", "false")).lower() == "true"
+        self.glass = str(QSettings().value("glass", "true")).lower() == "true"
         app.styleHints().colorSchemeChanged.connect(lambda _scheme: self.apply())
         self.apply()
 
     def set_contrast(self, on: bool):
         self.contrast = on
         QSettings().setValue("high_contrast", "true" if on else "false")
+        self.apply()
+
+    def set_glass(self, on: bool):
+        """The frosted look: translucent surfaces over a soft colour wash. High contrast stays solid."""
+        self.glass = on
+        QSettings().setValue("glass", "true" if on else "false")
         self.apply()
 
     def set_mode(self, mode: str):
@@ -126,6 +135,8 @@ class ThemeManager(QObject):
             dark = self.mode == "dark"
         self.theme = (HIGH_DARK if dark else HIGH_LIGHT) if self.contrast else (DARK if dark else LIGHT)
         self.app.setPalette(palette(self.theme))
+        global GLASS
+        GLASS = self.glass
         self.app.setStyleSheet(stylesheet(self.theme))
         self.changed.emit(self.theme)
 
@@ -218,6 +229,22 @@ def palette(t: Theme) -> QPalette:
     return p
 
 
+def settings_css(t: Theme) -> str:
+    """The Settings window (`quezka_ui.settings`): a list of sections on the left, cards of rows."""
+    return f"""
+    #settingsNav {{ background: {t.sidebar}; border-right: 1px solid {t.border}; }}
+    QToolButton#settingsSection {{ background: transparent; border: none; border-radius: 12px;
+        padding: 8px 12px; color: {t.muted}; text-align: left; font-weight: 600; }}
+    QToolButton#settingsSection:hover {{ background: {t.hover}; color: {t.text}; }}
+    QToolButton#settingsSection:checked {{ background: {t.accent_soft}; color: {t.text}; font-weight: 700; }}
+    #settingsTitle {{ font-size: 16pt; font-weight: 800; color: {t.text}; }}
+    #settingsHeading {{ font-size: 12.5pt; font-weight: 800; color: {t.text}; }}
+    #rowTitle {{ color: {t.text}; font-weight: 600; }}
+    #rowHint {{ color: {t.faint}; }}
+    #rowLine {{ background: {t.border}; max-height: 1px; min-height: 1px; }}
+    """
+
+
 def material(t: Theme) -> str:
     """The Material 3 shape of things: a pill for the current page, no borders on cards, round buttons and
     soft corners, one filled colour per screen. High contrast keeps its stark lines and borders. In Qt a
@@ -264,6 +291,83 @@ def material(t: Theme) -> str:
     QSlider::groove:horizontal {{ background: {t.raised}; height: 6px; border-radius: 3px; }}
     QSlider::sub-page:horizontal {{ background: {t.accent}; border-radius: 3px; }}
     QSlider::handle:horizontal {{ background: {t.accent}; width: 16px; margin: -5px 0; border-radius: 8px; }}
+    """
+
+
+def _rgb(color: str) -> tuple[int, int, int]:
+    c = QColor(color)
+    return c.red(), c.green(), c.blue()
+
+
+def mix(a: str, b: str, amount: float) -> str:
+    """`a` moved `amount` (0..1) of the way towards `b`, as #rrggbb."""
+    ra, ga, ba = _rgb(a)
+    rb, gb, bb = _rgb(b)
+    return "#%02x%02x%02x" % tuple(round(x + (y - x) * amount) for x, y in ((ra, rb), (ga, gb), (ba, bb)))
+
+
+def rgba(color: str, alpha: int) -> str:
+    r, g, b = _rgb(color)
+    return f"rgba({r}, {g}, {b}, {alpha})"
+
+
+def is_high_contrast(t: Theme) -> bool:
+    return t in (HIGH_LIGHT, HIGH_DARK)
+
+
+def glass_on(t: Theme) -> bool:
+    return GLASS and not is_high_contrast(t)
+
+
+def wash(t: Theme) -> str:
+    """The soft colour wash behind the glass: the accent from the top left, a warm glow at the bottom right."""
+    a = mix(t.bg, t.accent, 0.20 if t.dark else 0.16)
+    b = mix(t.bg, GLOW, 0.13 if t.dark else 0.10)
+    return f"qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {a}, stop:0.5 {t.bg}, stop:1 {b})"
+
+
+def glass(t: Theme) -> str:
+    """Liquid glass on top of Material 3: the window shows a colour wash and every surface is frosted,
+    translucent, with a bright top edge catching the light. Text keeps the solid theme's colours, so its
+    contrast doesn't change. Menus and tooltips are separate windows, which Qt can't make see-through
+    everywhere: they get the glass edge on a solid surface."""
+    if not glass_on(t):
+        return ""
+    edge = rgba("#ffffff", 34 if t.dark else 235)
+    side = rgba("#ffffff", 16) if t.dark else rgba(t.accent, 40)
+    pane = rgba(t.surface, 165 if t.dark else 172)
+    bar = rgba(t.sidebar, 120 if t.dark else 105)
+    field = rgba("#05050c", 120) if t.dark else rgba("#ffffff", 205)
+    chip = rgba("#ffffff", 20) if t.dark else rgba("#ffffff", 150)
+    hover = rgba("#ffffff", 34) if t.dark else rgba(t.accent, 30)
+    top = mix(t.accent, "#ffffff", 0.22)
+    return f"""
+    QMainWindow, QDialog {{ background: {wash(t)}; }}
+    #page {{ background: transparent; }}
+    #sidebar {{ background: {bar}; border: none; border-right: 1px solid {side}; }}
+    #card, #glass {{ background: {pane}; border: 1px solid {side}; border-top: 1px solid {edge};
+        border-radius: 18px; }}
+    #segmented {{ background: {chip}; border: 1px solid {side}; border-top-color: {edge}; }}
+    QPushButton, QToolButton {{ background: {chip}; border: 1px solid {side}; border-top-color: {edge}; }}
+    QPushButton:hover, QToolButton:hover {{ background: {hover}; }}
+    QPushButton#primary {{ background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {top}, stop:1 {t.accent});
+        border: 1px solid {rgba("#ffffff", 70)}; }}
+    QPushButton#primary:hover {{ background: {t.accent_hover}; }}
+    QToolButton#nav, QToolButton#icon, QPushButton#icon, QToolButton#tool, QPushButton#segment {{
+        background: transparent; border: none; }}
+    QToolButton#nav:hover, QToolButton#icon:hover, QPushButton#icon:hover, QToolButton#tool:hover {{
+        background: {hover}; }}
+    QToolButton#nav:checked {{ background: {rgba(t.accent, 70 if t.dark else 48)}; border: 1px solid {side};
+        border-top-color: {edge}; }}
+    QPushButton#segment:checked {{ background: {pane}; border: 1px solid {side}; border-top-color: {edge}; }}
+    QLineEdit, QPlainTextEdit, QTextEdit, QComboBox, QDateEdit, QTimeEdit, QSpinBox, QDoubleSpinBox {{
+        background: {field}; border: 1px solid {side}; }}
+    QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QComboBox:focus, QDateEdit:focus,
+    QTimeEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {{ border: 2px solid {t.accent}; }}
+    QMenu, QComboBox QAbstractItemView {{ border: 1px solid {side}; border-top: 1px solid {edge}; }}
+    QTableView {{ background: {pane}; alternate-background-color: {chip}; }}
+    QHeaderView::section {{ background: transparent; }}
+    #settingsNav {{ background: {bar}; border-right: 1px solid {side}; }}
     """
 
 
@@ -451,4 +555,4 @@ def stylesheet(t: Theme) -> str:
     QSplitter::handle {{ background: transparent; }}
     QCalendarWidget QWidget {{ alternate-background-color: {t.raised}; }}
     QCalendarWidget QToolButton {{ border: none; background: transparent; }}
-    """ + material(t) + "\n".join(rule(t) for rule in _extra_css)
+    """ + material(t) + settings_css(t) + glass(t) + "\n".join(rule(t) for rule in _extra_css)
