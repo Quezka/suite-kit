@@ -76,6 +76,8 @@ class _Fitter(QObject):
                 and not any(c.__name__ in _STANDARD for c in type(obj).__mro__)
                 and obj.layout() is not None):
             obj.setProperty("fitted", True)
+            from .settings import shape
+            shape(obj)
             area = available(obj)
             if area is not None and obj.sizeHint().height() > int(area.height() * 0.9):
                 scrollable(obj)

@@ -108,3 +108,21 @@ def test_dialog_shell_marks_save_primary(app):
     dialog_shell(d, "New event")
     assert box.button(QDialogButtonBox.Save).objectName() == "primary"
     assert box.button(QDialogButtonBox.Cancel).objectName() != "primary"
+
+
+def test_every_app_dialog_gets_its_title_and_a_primary_button(app):
+    from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QLineEdit, QVBoxLayout
+    from quezka_ui import fit
+    fit.install(app)
+    d = QDialog()
+    d.setWindowTitle("New event")
+    layout = QVBoxLayout(d)
+    layout.addWidget(QLineEdit())
+    box = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+    layout.addWidget(box)
+    d.show()
+    titles = [l.text() for l in d.findChildren(QLabel) if l.objectName() == "sheetTitle"]
+    assert titles == ["New event"]
+    assert box.button(QDialogButtonBox.Save).objectName() == "primary"
+    assert d.minimumWidth() >= 440
+    d.close()

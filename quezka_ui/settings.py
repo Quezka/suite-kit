@@ -253,6 +253,7 @@ class SettingsWindow(QDialog):
 
 
 def dialog_shell(dialog: QDialog, title: str | None = None, width: int | None = None) -> None:
+    dialog.setProperty("shaped", True)
     """Give an editor dialog the suite's shape after its layout is built: roomier margins, a big title on top
     and a primary Save button. Call once, before the dialog is shown."""
     layout = dialog.layout()
@@ -270,3 +271,33 @@ def dialog_shell(dialog: QDialog, title: str | None = None, width: int | None = 
                     b.setObjectName("primary")
     if width:
         dialog.setMinimumWidth(width)
+
+
+def shape(dialog: QDialog) -> None:
+    """What every app dialog gets automatically, as it is first polished (see `fit.install`): the window
+    title shown big on top, roomier margins and a primary accept button. Skipped for the Settings window,
+    for dialogs that already have a title of their own, and for ones that ask with `shaped=False`."""
+    if dialog.property("shaped") is not None or isinstance(dialog, SettingsWindow):
+        return
+    dialog.setProperty("shaped", True)
+    layout = dialog.layout()
+    if layout is None:
+        return
+    left, top, right, bottom = (layout.contentsMargins().left(), layout.contentsMargins().top(),
+                                layout.contentsMargins().right(), layout.contentsMargins().bottom())
+    layout.setContentsMargins(max(left, 22), max(top, 18), max(right, 22), max(bottom, 18))
+    has_title = any(label.objectName() in ("sheetTitle", "settingsTitle", "pageTitle")
+                    for label in dialog.findChildren(QLabel))
+    title = dialog.windowTitle().strip()
+    if dialog.minimumWidth() < 440 and dialog.sizeHint().width() < 440:
+        dialog.setMinimumWidth(440)  # cramped forms read badly; fit.clamp_dialog still caps it on small screens
+    if title and not has_title and isinstance(layout, QVBoxLayout):
+        layout.insertWidget(0, QLabel(title, objectName="sheetTitle"))
+    for box in dialog.findChildren(QDialogButtonBox):
+        for b in box.buttons():
+            b.setCursor(Qt.PointingHandCursor)
+            if (box.buttonRole(b) in (QDialogButtonBox.AcceptRole, QDialogButtonBox.YesRole, QDialogButtonBox.ApplyRole)
+                    and not b.objectName()):
+                b.setObjectName("primary")
+                b.style().unpolish(b)
+                b.style().polish(b)

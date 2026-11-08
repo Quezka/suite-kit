@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.8.2] - 2026-11-08
+
+Every app dialog takes the new shape by itself as it first opens (`settings.shape`, called from `fit.install`): its
+title shown big on top, roomier margins, at least 440 px wide, and the accept button (Save, OK) filled with the accent.
+Dialogs with a title of their own and the Settings window are left alone; `setProperty("shaped", False)` opts out.
+
 ## [0.8.1] - 2026-11-08
 
 Settings sections keep their margins (the heading was pushed into the corner).
