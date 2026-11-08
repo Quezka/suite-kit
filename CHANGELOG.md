@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.0] - 2026-11-08
+
+Liquid glass done the Apple way (`glass.py`). Backgrounds are plain again: the colour wash is gone, and content cards
+are solid. The chrome is glass: menus, the lists that drop down from a box and tooltips blur the real content under
+them, a settings section's header floats over its cards and blurs them as they scroll underneath (`GlassHeader`),
+and the sidebar floats as an inset panel with a light top edge. On Windows 11 the main window gets the system's own
+Mica (a blur of the real desktop) behind its sidebar. Nothing invents a background.
+
 ## [0.8.3] - 2026-11-08
 
 `theme.follow(t)`: an app that runs its own theme manager (Facet) tells the kit which theme is showing, so the kit's

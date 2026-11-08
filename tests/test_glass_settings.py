@@ -47,7 +47,8 @@ def test_glass_is_on_by_default_and_off_in_high_contrast(app):
     m = theme.manager()
     m.set_contrast(False)
     assert m.glass
-    assert "qlineargradient" in app.styleSheet()
+    assert "border-radius: 22px; margin: 10px 0 10px 10px" in app.styleSheet()  # the floating glass sidebar
+    assert "qlineargradient(x1:0, y1:0, x2:1, y2:1" not in app.styleSheet()  # no colour wash behind anything
     m.set_contrast(True)
     assert theme.glass(m.theme) == ""
     m.set_contrast(False)
@@ -126,3 +127,51 @@ def test_every_app_dialog_gets_its_title_and_a_primary_button(app):
     assert box.button(QDialogButtonBox.Save).objectName() == "primary"
     assert d.minimumWidth() >= 440
     d.close()
+
+
+def test_blur_keeps_the_size_and_softens():
+    from PySide6.QtGui import QImage, QColor
+    from quezka_ui.glass import blur
+    image = QImage(120, 60, QImage.Format_ARGB32)
+    image.fill(QColor("white"))
+    for x in range(0, 120, 2):
+        for y in range(60):
+            image.setPixelColor(x, y, QColor("black"))
+    soft = blur(image)
+    assert soft.size() == image.size()
+    grey = soft.pixelColor(60, 30).red()
+    assert 40 < grey < 215  # stripes became grey
+
+
+def test_menus_become_glass_and_paint(app):
+    from PySide6.QtWidgets import QMainWindow, QMenu
+    from quezka_ui import glass
+    glass.install(app)
+    theme.manager().set_contrast(False)
+    theme.manager().set_glass(True)
+    w = QMainWindow()
+    w.resize(300, 200)
+    w.show()
+    menu = QMenu(w)
+    menu.addAction("One")
+    menu.popup(w.mapToGlobal(w.rect().center()))
+    app.processEvents()
+    assert menu.property("glassy") is True
+    assert not menu.grab().isNull()
+    menu.close()
+    w.close()
+
+
+def test_a_section_header_floats_over_its_cards(app):
+    from quezka_ui.settings import SettingsWindow
+    w = SettingsWindow("Settings", "Close")
+    section = w.section("Look", "palette")
+    for _ in range(12):
+        section.card().row("A row", None)
+    w.show()
+    app.processEvents()
+    assert section.header.isVisible() and section.header.y() == section.area.y()
+    section.area.verticalScrollBar().setValue(80)
+    app.processEvents()
+    assert not section.header.grab().isNull()
+    w.close()

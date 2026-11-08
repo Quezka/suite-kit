@@ -165,21 +165,33 @@ class SettingsCard(Card):
 
 
 class SettingsSection(QWidget):
-    """One page of settings: a heading, then cards."""
+    """One page of settings: a heading in a glass header (the cards scroll under it, blurred), then cards."""
 
     def __init__(self, title: str):
         super().__init__()
+        from .glass import GlassHeader
+
         self.title = title
         self.column = QVBoxLayout()
-        self.column.setContentsMargins(24, 20, 24, 24)
         self.column.setSpacing(14)
-        self.column.addWidget(QLabel(title, objectName="settingsHeading"))
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         self._end = QWidget()
         self.column.addWidget(self._end, 1)
-        outer.addWidget(scrolling(self.column))
-        self.column.setContentsMargins(26, 22, 26, 24)  # `scrolling` sets its own margins on a layout
+        self.area = scrolling(self.column)
+        outer.addWidget(self.area)
+        self.header = GlassHeader(self.area, self)
+        self.header.layout.addWidget(QLabel(title, objectName="settingsHeading"))
+        # `scrolling` sets its own margins on a layout; the cards start below the floating header.
+        self.column.setContentsMargins(26, self.header.header_height() + 4, 26, 24)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.header.place()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.header.place()
 
     def card(self, title: str | None = None) -> SettingsCard:
         card = SettingsCard(title)

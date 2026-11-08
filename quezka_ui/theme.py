@@ -73,7 +73,6 @@ HIGH_DARK = Theme(
 
 RADIUS = 7
 GLASS = True  # follows ThemeManager.glass; module-level so `stylesheet(t)` keeps its signature
-GLOW = "#ec4899"  # the second colour of the glass wash, opposite the accent
 
 _extra_css: list = []
 
@@ -118,7 +117,7 @@ class ThemeManager(QObject):
         self.apply()
 
     def set_glass(self, on: bool):
-        """The frosted look: translucent surfaces over a soft colour wash. High contrast stays solid."""
+        """The glass look (see `glass.py`): glass chrome over plain backgrounds. High contrast stays solid."""
         self.glass = on
         QSettings().setValue("glass", "true" if on else "false")
         self.apply()
@@ -345,55 +344,35 @@ def glass_on(t: Theme) -> bool:
     return GLASS and not is_high_contrast(t)
 
 
-def wash(t: Theme) -> str:
-    """The soft colour wash behind the glass: the accent from the top left, a warm glow at the bottom right."""
-    a = mix(t.bg, t.accent, 0.20 if t.dark else 0.16)
-    b = mix(t.bg, GLOW, 0.13 if t.dark else 0.10)
-    return f"qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {a}, stop:0.5 {t.bg}, stop:1 {b})"
-
-
 def glass(t: Theme) -> str:
-    """Liquid glass on top of Material 3: the window shows a colour wash and every surface is frosted,
-    translucent, with a bright top edge catching the light. Text keeps the solid theme's colours, so its
-    contrast doesn't change. Menus and tooltips are separate windows, which Qt can't make see-through
-    everywhere: they get the glass edge on a solid surface."""
+    """Liquid glass, Apple style (see `glass.py`): backgrounds stay plain and content cards stay solid; the chrome is
+    glass. Menus, drop-down lists and tooltips are painted by `glass.py` with a real blur of what's under them, so
+    their style-sheet background is transparent. The sidebar floats as an inset panel with a light top edge, and
+    buttons catch the light along their top. Nothing invents a background."""
     if not glass_on(t):
         return ""
-    edge = rgba("#ffffff", 34 if t.dark else 235)
-    side = rgba("#ffffff", 16) if t.dark else rgba(t.accent, 40)
-    pane = rgba(t.surface, 165 if t.dark else 172)
-    bar = rgba(t.sidebar, 120 if t.dark else 105)
-    field = rgba("#05050c", 120) if t.dark else rgba("#ffffff", 205)
-    chip = rgba("#ffffff", 20) if t.dark else rgba("#ffffff", 150)
-    hover = rgba("#ffffff", 34) if t.dark else rgba(t.accent, 30)
-    top = mix(t.accent, "#ffffff", 0.22)
+    edge = rgba("#ffffff", 30 if t.dark else 255)
+    line = rgba("#ffffff", 14) if t.dark else rgba("#000000", 22)
+    chip = rgba("#ffffff", 16) if t.dark else rgba("#ffffff", 200)
+    hover = rgba("#ffffff", 30) if t.dark else rgba(t.accent, 26)
     return f"""
-    QMainWindow, QDialog {{ background: {wash(t)}; }}
-    #page {{ background: transparent; }}
-    #sidebar {{ background: {bar}; border: none; border-right: 1px solid {side}; }}
-    #card, #glass {{ background: {pane}; border: 1px solid {side}; border-top: 1px solid {edge};
-        border-radius: 18px; }}
-    #segmented {{ background: {chip}; border: 1px solid {side}; border-top-color: {edge}; }}
-    QPushButton, QToolButton {{ background: {chip}; border: 1px solid {side}; border-top-color: {edge}; }}
+    #sidebar {{ background: {t.sidebar}; border: 1px solid {line}; border-top: 1px solid {edge};
+        border-radius: 22px; margin: 10px 0 10px 10px; }}
+    QPushButton, QToolButton {{ background: {chip}; border: 1px solid {line}; border-top-color: {edge}; }}
     QPushButton:hover, QToolButton:hover {{ background: {hover}; }}
-    QPushButton#primary {{ background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {top}, stop:1 {t.accent});
-        border: 1px solid {rgba("#ffffff", 70)}; }}
-    QPushButton#primary:hover {{ background: {t.accent_hover}; }}
-    QToolButton#nav, QToolButton#icon, QPushButton#icon, QToolButton#tool, QPushButton#segment {{
-        background: transparent; border: none; }}
-    QToolButton#nav:hover, QToolButton#icon:hover, QPushButton#icon:hover, QToolButton#tool:hover {{
-        background: {hover}; }}
-    QToolButton#nav:checked {{ background: {rgba(t.accent, 70 if t.dark else 48)}; border: 1px solid {side};
-        border-top-color: {edge}; }}
-    QPushButton#segment:checked {{ background: {pane}; border: 1px solid {side}; border-top-color: {edge}; }}
-    QLineEdit, QPlainTextEdit, QTextEdit, QComboBox, QDateEdit, QTimeEdit, QSpinBox, QDoubleSpinBox {{
-        background: {field}; border: 1px solid {side}; }}
-    QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QComboBox:focus, QDateEdit:focus,
-    QTimeEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {{ border: 2px solid {t.accent}; }}
-    QMenu, QComboBox QAbstractItemView {{ border: 1px solid {side}; border-top: 1px solid {edge}; }}
-    QTableView {{ background: {pane}; alternate-background-color: {chip}; }}
-    QHeaderView::section {{ background: transparent; }}
-    #settingsNav {{ background: {bar}; border-right: 1px solid {side}; }}
+    QPushButton#primary {{ border: 1px solid {rgba("#ffffff", 60)}; }}
+    QToolButton#nav, QToolButton#icon, QPushButton#icon, QToolButton#tool, QPushButton#segment,
+    QToolButton#settingsSection {{ background: transparent; border: none; }}
+    QToolButton#nav:hover, QToolButton#icon:hover, QPushButton#icon:hover, QToolButton#tool:hover,
+    QToolButton#settingsSection:hover {{ background: {hover}; }}
+    QToolButton#nav:checked, QToolButton#settingsSection:checked {{ background: {t.accent_soft}; }}
+    #segmented {{ background: {chip}; border: 1px solid {line}; border-top-color: {edge}; }}
+    QPushButton#segment:checked {{ background: {t.surface}; border: 1px solid {line}; border-top-color: {edge}; }}
+    QMenu {{ background: transparent; border: none; padding: 6px; }}
+    QComboBox QAbstractItemView {{ background: transparent; border: none; }}
+    QToolTip {{ background: transparent; border: none; padding: 5px 8px; }}
+    #settingsNav {{ background: {t.sidebar}; border: 1px solid {line}; border-top: 1px solid {edge};
+        border-radius: 22px; margin: 10px; }}
     """
 
 

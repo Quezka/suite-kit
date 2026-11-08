@@ -6,7 +6,7 @@ from pathlib import Path
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
-from . import fit, fonts, i18n, icons, kinetic, leave_on_enter, theme, uiscale
+from . import glass, fit, fonts, i18n, icons, kinetic, leave_on_enter, theme, uiscale
 
 
 BASE_PT = 9.0
@@ -38,6 +38,7 @@ def create_application(argv: list[str], *, name: str, app_id: str, icon: Path,
     leave_on_enter.install(app)  # Enter in a one-line box lets go of it
     fit.install(app)  # a dialog taller than the screen scrolls
     kinetic.install(app)  # a flick on a trackpad keeps gliding
+    glass.install(app)  # menus, lists and tooltips blur what's under them; Mica on Windows 11
     app.setWindowIcon(QIcon(str(icon)))
     i18n.install(app=app)
     theme.install(app)
