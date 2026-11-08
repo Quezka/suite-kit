@@ -155,8 +155,28 @@ def manager() -> ThemeManager:
     return _manager
 
 
+class _Follower(QObject):
+    changed = Signal(object)
+
+
+_followed = None  # the theme of an app that runs its own manager (Facet), see `follow`
+_follower: _Follower | None = None
+
+
+def follow(t) -> None:
+    """For an app with its own theme manager: tell the kit which theme is showing, so kit widgets (the
+    settings switch, icons) draw in it and redraw when it changes. `t` needs the kit's colour names."""
+    global _followed, _follower
+    _followed = t
+    if _follower is None:
+        _follower = _Follower()
+    _follower.changed.emit(t)
+
+
 def current() -> Theme:
-    return _manager.theme if _manager else LIGHT
+    if _manager is not None:
+        return _manager.theme
+    return _followed if _followed is not None else LIGHT
 
 
 def current_color(role: str) -> QColor:
@@ -186,14 +206,20 @@ def school_brand(css=None) -> None:
 
 def themed(apply) -> None:
     """Call `apply(theme)` now and again whenever the theme changes."""
+    global _follower
     apply(current())
+
+    def safe(theme):
+        try:
+            apply(theme)
+        except RuntimeError:  # the widget was deleted
+            pass
     if _manager is not None:
-        def safe(theme):
-            try:
-                apply(theme)
-            except RuntimeError:  # the widget was deleted
-                pass
         _manager.changed.connect(safe)
+    else:
+        if _follower is None:
+            _follower = _Follower()
+        _follower.changed.connect(safe)
 
 
 def disabled(t: Theme) -> str:
@@ -312,7 +338,7 @@ def rgba(color: str, alpha: int) -> str:
 
 
 def is_high_contrast(t: Theme) -> bool:
-    return t in (HIGH_LIGHT, HIGH_DARK)
+    return t in (HIGH_LIGHT, HIGH_DARK) or bool(getattr(t, "high_contrast", False))
 
 
 def glass_on(t: Theme) -> bool:

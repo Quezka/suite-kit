@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.8.3] - 2026-11-08
+
+`theme.follow(t)`: an app that runs its own theme manager (Facet) tells the kit which theme is showing, so the kit's
+widgets (the settings switch, section icons) draw in it and follow its changes.
+
 ## [0.8.2] - 2026-11-08
 
 Every app dialog takes the new shape by itself as it first opens (`settings.shape`, called from `fit.install`): its
