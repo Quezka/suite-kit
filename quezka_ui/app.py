@@ -6,10 +6,10 @@ from pathlib import Path
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
-from . import glass, fit, fonts, i18n, icons, kinetic, leave_on_enter, theme, uiscale
+from . import tokens, glass, fit, fonts, i18n, icons, kinetic, leave_on_enter, theme, uiscale
 
 
-BASE_PT = 9.0
+BASE_PT = tokens.pt('body')  # the suite's body size (16 px)
 THEMED_CLASSES = ("QLabel", "QPushButton", "QToolButton", "QCheckBox", "QRadioButton", "QGroupBox", "QMenu",
                   "QMenuBar", "QAbstractItemView", "QListView", "QTreeView", "QTableView", "QListWidget", "QTreeWidget", "QTableWidget",
                   "QHeaderView", "QTabBar", "QComboBox", "QLineEdit",

@@ -202,7 +202,7 @@ def test_see_through_only_where_the_desktop_can_blur(app, monkeypatch):
     monkeypatch.setattr(theme, "SEE_THROUGH_POSSIBLE", True)
     m.set_mode("light")
     assert "QMainWindow, QDialog { background: transparent" in app.styleSheet()
-    assert theme.see_through_fill(theme.current()) == "#91f3f2ff"
+    assert theme.see_through_fill(theme.current()) == "#91f4f4f2"
     m.set_see_through(False)
     assert "QMainWindow, QDialog { background: transparent" not in app.styleSheet()
     m.set_see_through(True)

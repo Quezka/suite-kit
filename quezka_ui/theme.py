@@ -7,7 +7,7 @@ from PySide6.QtCore import QObject, QSettings, Qt, Signal
 from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import QApplication
 
-from . import icons
+from . import icons, tokens
 
 
 @dataclass(frozen=True)
@@ -34,42 +34,17 @@ class Theme:
 
 # Material 3 flavoured: tonal surfaces tinted by the accent, with dark text, firm borders where there are
 # borders, and no pale grey for anything that matters.
-LIGHT = Theme(
-    dark=False,
-    bg="#f3f2ff", surface="#ffffff", raised="#e9e8ff", sidebar="#eceaff",
-    border="#b3b6cc", hover="#dedcf7",
-    text="#0b0d14", muted="#343b4d", faint="#4d5466",
-    accent="#4f46e5", accent_hover="#4338ca", accent_soft="#dcdbff", on_accent="#ffffff",
-    danger="#d0262d", success="#127a46", warning="#b45309", flag="#d0262d",
-)
+def _theme(name: str, dark: bool) -> "Theme":
+    """A theme from the suite's tokens (tokens.py, generated from suite-rs/design/tokens.json)."""
+    values = {k: v for k, v in tokens.THEMES[name].items() if k in Theme.__dataclass_fields__}
+    return Theme(dark=dark, flag=values["danger"], **values)
 
-DARK = Theme(
-    dark=True,
-    bg="#0e0e19", surface="#1a1a2b", raised="#27273f", sidebar="#13131f",
-    border="#4b4e66", hover="#2d2d47",
-    text="#f6f7fb", muted="#cbcfdd", faint="#a2a8bb",
-    accent="#a9a6ff", accent_hover="#c3c0ff", accent_soft="#3b3984", on_accent="#0b0b14",
-    danger="#ff7b80", success="#4ade80", warning="#fbbf24", flag="#ff7b80",
-)
 
-# "High contrast" in Settings: black on white / white on black, thick lines.
-HIGH_LIGHT = Theme(
-    dark=False,
-    bg="#ffffff", surface="#ffffff", raised="#f0f0f0", sidebar="#f0f0f0",
-    border="#000000", hover="#dcdcdc",
-    text="#000000", muted="#1a1a1a", faint="#333333",
-    accent="#1f1fa8", accent_hover="#14147a", accent_soft="#cfcff7", on_accent="#ffffff",
-    danger="#a30000", success="#005a2b", warning="#7a4100", flag="#a30000",
-)
-
-HIGH_DARK = Theme(
-    dark=True,
-    bg="#000000", surface="#000000", raised="#1a1a1a", sidebar="#0a0a0a",
-    border="#ffffff", hover="#2e2e2e",
-    text="#ffffff", muted="#e6e6e6", faint="#cccccc",
-    accent="#ffd400", accent_hover="#ffe55c", accent_soft="#3a3300", on_accent="#000000",
-    danger="#ff8a8a", success="#6dffb0", warning="#ffd400", flag="#ff8a8a",
-)
+# The suite's palette: neutral greys, one indigo accent, black and white for high contrast.
+LIGHT = _theme("light", False)
+DARK = _theme("dark", True)
+HIGH_LIGHT = _theme("high-light", False)
+HIGH_DARK = _theme("high-dark", True)
 
 RADIUS = 7
 GLASS = True  # follows ThemeManager.glass; module-level so `stylesheet(t)` keeps its signature
@@ -80,13 +55,13 @@ SEE_THROUGH_POSSIBLE = False  # set by `glass.install`: whether the desktop blur
 # list, the floating header) share one radius and sit one GAP from the window's edge and from each other; something
 # inside one of them, touching its padding, gets the radius minus that padding, so the two curves run side by side
 # (Apple's "concentric" corners).
-OUTER_RADIUS = 20
-GAP = 10
+OUTER_RADIUS = int(tokens.RADIUS['radius-lg'])
+GAP = int(tokens.SPACE['gap'])
 NAV_PADDING = 10  # the sidebar's inner padding
 NAV_RADIUS = OUTER_RADIUS - NAV_PADDING
-CARD_PADDING = 12  # widgets.Card's default
+CARD_PADDING = int(tokens.SPACE['space-3'])  # widgets.Card's default
 TILE_RADIUS = OUTER_RADIUS - CARD_PADDING
-POPUP_RADIUS = 14
+POPUP_RADIUS = int(tokens.RADIUS['radius-popup'])
 POPUP_PADDING = 6
 
 _extra_css: list = []
@@ -213,8 +188,8 @@ SCHOOL_DARK = {"bg": "#10131a", "surface": "#1a1d26", "raised": "#262b3a", "side
 
 def _school_css(t: Theme) -> str:
     return f"""
-    #school {{ color: {t.text}; font-weight: 600; font-size: 9pt; }}
-    #place {{ color: {t.muted}; font-size: 8.5pt; }}
+    #school {{ color: {t.text}; font-weight: 600; font-size: {tokens.pt('caption')}pt; }}
+    #place {{ color: {t.muted}; font-size: {tokens.pt('caption')}pt; }}
     """
 
 
@@ -285,8 +260,8 @@ def settings_css(t: Theme) -> str:
         padding: 8px 12px; color: {t.muted}; text-align: left; font-weight: 600; }}
     QToolButton#settingsSection:hover {{ background: {t.hover}; color: {t.text}; }}
     QToolButton#settingsSection:checked {{ background: {t.accent_soft}; color: {t.text}; font-weight: 700; }}
-    #settingsTitle {{ font-size: 16pt; font-weight: 800; color: {t.text}; }}
-    #settingsHeading {{ font-size: 12.5pt; font-weight: 800; color: {t.text}; }}
+    #settingsTitle {{ font-size: {tokens.pt('headline')}pt; font-weight: 800; color: {t.text}; }}
+    #settingsHeading {{ font-size: {tokens.pt('title-lg')}pt; font-weight: 800; color: {t.text}; }}
     #rowTitle {{ color: {t.text}; font-weight: 600; }}
     #rowHint {{ color: {t.faint}; }}
     #rowLine {{ background: {t.border}; max-height: 1px; min-height: 1px; }}
@@ -437,8 +412,8 @@ def stylesheet(t: Theme) -> str:
 
     /* ---- sidebar ---- */
     #sidebar {{ background: {t.sidebar}; border-right: 1px solid {t.border}; }}
-    #brand {{ font-size: 13pt; font-weight: 700; color: {t.text}; }}
-    #sidebarSection {{ color: {t.faint}; font-size: 8.5pt; font-weight: 600;
+    #brand {{ font-size: {tokens.pt('title-lg')}pt; font-weight: 700; color: {t.text}; }}
+    #sidebarSection {{ color: {t.faint}; font-size: {tokens.pt('caption')}pt; font-weight: 600;
                        letter-spacing: 1px; padding: 0 9px; }}
     QToolButton#nav {{ background: transparent; border: none; border-radius: 6px;
                        padding: 6px 9px; color: {t.muted}; text-align: left;
@@ -450,24 +425,24 @@ def stylesheet(t: Theme) -> str:
 
     /* ---- page chrome ---- */
     #page {{ background: {t.bg}; }}
-    #pageTitle {{ font-size: 16.5pt; font-weight: 700; color: {t.text}; }}
+    #pageTitle {{ font-size: {tokens.pt('headline')}pt; font-weight: 700; color: {t.text}; }}
     #pageSubtitle {{ color: {t.muted}; }}
     #card {{ background: {t.surface}; border: 1px solid {t.border}; border-radius: {r + 2}px; }}
-    #cardTitle {{ font-weight: 700; color: {t.text}; font-size: 9pt; }}
+    #cardTitle {{ font-weight: 700; color: {t.text}; font-size: {tokens.pt('title')}pt; }}
     #muted {{ color: {t.muted}; }}
     #hint {{ color: {t.faint}; }}
     QLabel#danger {{ color: {t.danger}; }}
-    #stat {{ font-size: 19pt; font-weight: 700; color: {t.text}; }}
-    #sheetTitle {{ font-size: 14pt; font-weight: 700; color: {t.text}; }}
+    #stat {{ font-size: {tokens.pt('display')}pt; font-weight: 700; color: {t.text}; }}
+    #sheetTitle {{ font-size: {tokens.pt('title-lg')}pt; font-weight: 700; color: {t.text}; }}
     QTextBrowser#sheetBody {{ background: {t.raised}; border: none; border-radius: 8px;
         padding: 8px 9px; }}
     QLabel#chip, QLabel#chipDanger {{ background: {t.raised}; color: {t.text};
-        border-radius: 8px; padding: 3px 8px; font-size: 8.5pt; font-weight: 600; }}
+        border-radius: 8px; padding: 3px 8px; font-size: {tokens.pt('caption')}pt; font-weight: 600; }}
     QLabel#chipDanger {{ background: {t.accent_soft}; color: {t.danger}; }}
-    QLineEdit#titleEdit {{ font-size: 12pt; font-weight: 600; padding: 6px 8px; }}
-    #tileCaption {{ color: {t.muted}; font-size: 8.5pt; font-weight: 600;
+    QLineEdit#titleEdit {{ font-size: {tokens.pt('title')}pt; font-weight: 600; padding: 6px 8px; }}
+    #tileCaption {{ color: {t.muted}; font-size: {tokens.pt('caption')}pt; font-weight: 600;
         letter-spacing: 0.5px; }}
-    #tileValue {{ font-size: 17pt; font-weight: 700; color: {t.text}; }}
+    #tileValue {{ font-size: {tokens.pt('headline')}pt; font-weight: 700; color: {t.text}; }}
     #segmented {{ background: {t.raised}; border: 1px solid {t.border}; border-radius: 7px; }}
     QPushButton#segment {{ background: transparent; border: none; border-radius: 5px;
         padding: 4px 9px; color: {t.muted}; font-weight: 500; }}
@@ -475,7 +450,7 @@ def stylesheet(t: Theme) -> str:
     QPushButton#segment:checked {{ background: {t.surface}; color: {t.text};
         font-weight: 600; border: 1px solid {t.border}; }}
     #badge {{ background: {t.accent_soft}; color: {t.accent}; border-radius: 7px;
-              padding: 1px 6px; font-weight: 600; font-size: 8.5pt; }}
+              padding: 1px 6px; font-weight: 600; font-size: {tokens.pt('caption')}pt; }}
 
     /* ---- buttons ---- */
     QPushButton, QToolButton {{ background: {t.raised}; color: {t.text};
@@ -496,7 +471,7 @@ def stylesheet(t: Theme) -> str:
     QToolButton::menu-indicator, QPushButton::menu-indicator {{ image: none; width: 0; }}
     QToolButton#day {{ min-width: 20px; max-width: 20px; min-height: 20px; max-height: 20px;
         padding: 0; border-radius: 10px; border: 1px solid {t.border}; background: {t.surface};
-        color: {t.muted}; font-weight: 600; font-size: 8.5pt; }}
+        color: {t.muted}; font-weight: 600; font-size: {tokens.pt('caption')}pt; }}
     QToolButton#day:hover {{ border-color: {t.accent}; }}
     QToolButton#day:checked {{ background: {t.accent}; border-color: {t.accent};
         color: {t.on_accent}; }}
@@ -585,7 +560,7 @@ def stylesheet(t: Theme) -> str:
     QTreeWidget::branch {{ background: transparent; }}
     QHeaderView::section {{ background: {t.raised}; color: {t.text}; border: none;
         border-bottom: 2px solid {t.border}; border-right: 1px solid {t.border};
-        padding: 6px 8px; font-weight: 700; font-size: 9pt; }}
+        padding: 6px 8px; font-weight: 700; font-size: {tokens.pt('label')}pt; }}
     QTableWidget {{ gridline-color: {t.border}; }}
 
     /* ---- scrollbars ---- */
