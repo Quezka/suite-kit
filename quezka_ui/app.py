@@ -38,7 +38,7 @@ def create_application(argv: list[str], *, name: str, app_id: str, icon: Path,
     leave_on_enter.install(app)  # Enter in a one-line box lets go of it
     fit.install(app)  # a dialog taller than the screen scrolls
     kinetic.install(app)  # a flick on a trackpad keeps gliding
-    glass.install(app)  # menus, lists and tooltips blur what's under them; Mica on Windows 11
+    glass.install(app)  # glass menus, lists and tooltips; see-through windows where the desktop can blur
     app.setWindowIcon(QIcon(str(icon)))
     i18n.install(app=app)
     theme.install(app)

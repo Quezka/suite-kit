@@ -173,7 +173,7 @@ class SettingsSection(QWidget):
 
         self.title = title
         self.column = QVBoxLayout()
-        self.column.setSpacing(14)
+        self.column.setSpacing(theme.GAP)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         self._end = QWidget()
@@ -183,7 +183,9 @@ class SettingsSection(QWidget):
         self.header = GlassHeader(self.area, self)
         self.header.layout.addWidget(QLabel(title, objectName="settingsHeading"))
         # `scrolling` sets its own margins on a layout; the cards start below the floating header.
-        self.column.setContentsMargins(26, self.header.header_height() + 4, 26, 24)
+        # The cards line up with the header: no gap on the left (the list beside them already ends one gap away),
+        # one gap on the right, below the header, and at the end.
+        self.column.setContentsMargins(0, self.header.bottom(), theme.GAP, theme.GAP)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -214,7 +216,8 @@ class SettingsWindow(QDialog):
         self._nav = QFrame(objectName="settingsNav")
         self._nav.setAttribute(Qt.WA_StyledBackground, True)
         self._nav_layout = QVBoxLayout(self._nav)
-        self._nav_layout.setContentsMargins(12, 18, 12, 12)
+        p = theme.NAV_PADDING
+        self._nav_layout.setContentsMargins(p, p + 8, p, p)
         self._nav_layout.setSpacing(4)
         heading = QLabel(title, objectName="settingsTitle")
         heading.setContentsMargins(8, 0, 0, 10)

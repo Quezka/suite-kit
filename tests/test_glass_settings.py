@@ -47,7 +47,7 @@ def test_glass_is_on_by_default_and_off_in_high_contrast(app):
     m = theme.manager()
     m.set_contrast(False)
     assert m.glass
-    assert "border-radius: 22px; margin: 10px 0 10px 10px" in app.styleSheet()  # the floating glass sidebar
+    assert "border-radius: 20px; margin: 10px 0 10px 10px" in app.styleSheet()  # the floating glass sidebar
     assert "qlineargradient(x1:0, y1:0, x2:1, y2:1" not in app.styleSheet()  # no colour wash behind anything
     m.set_contrast(True)
     assert theme.glass(m.theme) == ""
@@ -170,8 +170,70 @@ def test_a_section_header_floats_over_its_cards(app):
         section.card().row("A row", None)
     w.show()
     app.processEvents()
-    assert section.header.isVisible() and section.header.y() == section.area.y()
+    assert section.header.isVisible() and section.header.y() == section.area.y() + theme.GAP  # inset like the cards
+    first = section.column.itemAt(0).widget()
+    left = first.mapTo(section, first.rect().topLeft()).x()
+    assert abs(left - section.header.x()) <= 1, "the header lines up with the cards"
+    assert first.mapTo(section, first.rect().topLeft()).y() >= section.header.geometry().bottom() + theme.GAP
     section.area.verticalScrollBar().setValue(80)
     app.processEvents()
     assert not section.header.grab().isNull()
     w.close()
+
+
+def test_corners_nest(app):
+    """Outer surfaces share one radius; what sits inside one is rounder by exactly its padding less."""
+    assert theme.NAV_RADIUS == theme.OUTER_RADIUS - theme.NAV_PADDING
+    assert theme.TILE_RADIUS == theme.OUTER_RADIUS - theme.CARD_PADDING
+    m = theme.manager()
+    m.set_contrast(False)
+    sheet = app.styleSheet()
+    assert "#card { border-radius: 20px" in sheet
+    assert "QMenu::item { border-radius: 8px" in sheet  # 14 px menu, 6 px padding
+    assert "22px" not in sheet and "border-radius: 16px" not in sheet
+
+
+def test_see_through_only_where_the_desktop_can_blur(app, monkeypatch):
+    m = theme.manager()
+    m.set_contrast(False)
+    monkeypatch.setattr(theme, "SEE_THROUGH_POSSIBLE", False)
+    m.apply()
+    assert "QMainWindow, QDialog { background: transparent" not in app.styleSheet()
+    monkeypatch.setattr(theme, "SEE_THROUGH_POSSIBLE", True)
+    m.set_mode("light")
+    assert "QMainWindow, QDialog { background: transparent" in app.styleSheet()
+    assert theme.see_through_fill(theme.current()) == "#91f3f2ff"
+    m.set_see_through(False)
+    assert "QMainWindow, QDialog { background: transparent" not in app.styleSheet()
+    m.set_see_through(True)
+    m.set_contrast(True)
+    assert "QMainWindow, QDialog { background: transparent" not in app.styleSheet()  # high contrast stays solid
+    m.set_contrast(False)
+    monkeypatch.setattr(theme, "SEE_THROUGH_POSSIBLE", False)
+    m.set_mode("system")
+
+
+def test_joining_blur_my_shell_keeps_the_other_apps(monkeypatch):
+    from quezka_ui import glass
+
+    calls = []
+    lists = {"whitelist": "['org.gnome.Console']"}
+
+    def fake(*args):
+        calls.append(args)
+        if args[0] == "get":
+            return lists.get(args[2])
+        if args[0] == "set" and args[2] == "whitelist":
+            lists["whitelist"] = args[3]
+        return ""
+
+    monkeypatch.setattr(glass, "_gsettings", fake)
+    assert glass.join_blur_my_shell("io.github.quezka.Quire")
+    assert lists["whitelist"] == "['org.gnome.Console', 'io.github.quezka.Quire']"
+    assert ("set", glass.BLUR_MY_SHELL_APPS, "blur", "true") in calls
+    calls.clear()
+    assert glass.join_blur_my_shell("io.github.quezka.Quire")
+    assert not any(c[:3] == ("set", glass.BLUR_MY_SHELL_APPS, "whitelist") for c in calls)  # already there
+    lists["whitelist"] = "@as []"
+    assert glass.join_blur_my_shell("x.y")
+    assert lists["whitelist"] == "['x.y']"

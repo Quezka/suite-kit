@@ -73,6 +73,21 @@ HIGH_DARK = Theme(
 
 RADIUS = 7
 GLASS = True  # follows ThemeManager.glass; module-level so `stylesheet(t)` keeps its signature
+SEE_THROUGH = True  # follows ThemeManager.see_through
+SEE_THROUGH_POSSIBLE = False  # set by `glass.install`: whether the desktop blurs what's behind a window
+
+# The shape of the Material/glass look, so every corner lines up. Outer surfaces (the sidebar, cards, the Settings
+# list, the floating header) share one radius and sit one GAP from the window's edge and from each other; something
+# inside one of them, touching its padding, gets the radius minus that padding, so the two curves run side by side
+# (Apple's "concentric" corners).
+OUTER_RADIUS = 20
+GAP = 10
+NAV_PADDING = 10  # the sidebar's inner padding
+NAV_RADIUS = OUTER_RADIUS - NAV_PADDING
+CARD_PADDING = 12  # widgets.Card's default
+TILE_RADIUS = OUTER_RADIUS - CARD_PADDING
+POPUP_RADIUS = 14
+POPUP_PADDING = 6
 
 _extra_css: list = []
 
@@ -108,6 +123,7 @@ class ThemeManager(QObject):
         self.mode = mode if mode in MODES else "system"
         self.contrast = str(QSettings().value("high_contrast", "false")).lower() == "true"
         self.glass = str(QSettings().value("glass", "true")).lower() == "true"
+        self.see_through = str(QSettings().value("see_through", "true")).lower() == "true"
         app.styleHints().colorSchemeChanged.connect(lambda _scheme: self.apply())
         self.apply()
 
@@ -122,6 +138,12 @@ class ThemeManager(QObject):
         QSettings().setValue("glass", "true" if on else "false")
         self.apply()
 
+    def set_see_through(self, on: bool):
+        """See-through windows (see `glass.py`): the desktop shows through, blurred, where the system can blur it."""
+        self.see_through = on
+        QSettings().setValue("see_through", "true" if on else "false")
+        self.apply()
+
     def set_mode(self, mode: str):
         self.mode = mode
         QSettings().setValue("appearance", mode)
@@ -134,8 +156,9 @@ class ThemeManager(QObject):
             dark = self.mode == "dark"
         self.theme = (HIGH_DARK if dark else HIGH_LIGHT) if self.contrast else (DARK if dark else LIGHT)
         self.app.setPalette(palette(self.theme))
-        global GLASS
+        global GLASS, SEE_THROUGH
         GLASS = self.glass
+        SEE_THROUGH = self.see_through
         self.app.setStyleSheet(stylesheet(self.theme))
         self.changed.emit(self.theme)
 
@@ -258,7 +281,7 @@ def settings_css(t: Theme) -> str:
     """The Settings window (`quezka_ui.settings`): a list of sections on the left, cards of rows."""
     return f"""
     #settingsNav {{ background: {t.sidebar}; border-right: 1px solid {t.border}; }}
-    QToolButton#settingsSection {{ background: transparent; border: none; border-radius: 12px;
+    QToolButton#settingsSection {{ background: transparent; border: none; border-radius: {NAV_RADIUS}px;
         padding: 8px 12px; color: {t.muted}; text-align: left; font-weight: 600; }}
     QToolButton#settingsSection:hover {{ background: {t.hover}; color: {t.text}; }}
     QToolButton#settingsSection:checked {{ background: {t.accent_soft}; color: {t.text}; font-weight: 700; }}
@@ -280,9 +303,9 @@ def material(t: Theme) -> str:
     return f"""
     #sidebar {{ border-right: none; }}
     #brand {{ font-weight: 800; }}
-    QToolButton#nav {{ border-radius: 16px; padding: 7px 12px; }}
+    QToolButton#nav {{ border-radius: {NAV_RADIUS}px; padding: 7px 12px; }}
     QToolButton#nav:checked {{ color: {t.text}; font-weight: 700; }}
-    #card {{ border-radius: 16px; border: none; }}
+    #card {{ border-radius: {OUTER_RADIUS}px; border: none; }}
     #segmented {{ border: 1px solid {t.border}; border-radius: 12px; background: transparent; }}
     QPushButton {{ border: none; border-radius: 12px; padding: 6px 14px; font-weight: 600; }}
     QToolButton {{ border: none; border-radius: 12px; }}
@@ -290,14 +313,14 @@ def material(t: Theme) -> str:
     QPushButton#segment {{ border-radius: 10px; padding: 4px 10px; }}
     QPushButton#segment:checked {{ background: {t.accent_soft}; color: {t.text}; border: none; }}
     QToolButton#icon, QPushButton#icon, QToolButton#tool {{ border-radius: 12px; }}
-    QToolButton#startTile {{ border: none; border-radius: 16px; }}
+    QToolButton#startTile {{ border: none; border-radius: {TILE_RADIUS}px; }}
     QLineEdit, QPlainTextEdit, QTextEdit, QComboBox, QSpinBox, QDoubleSpinBox, QDateEdit, QTimeEdit {{
         border-radius: 10px; }}
     QPlainTextEdit#code, QTextBrowser#code, QTextBrowser#sheetBody {{ border-radius: 12px; }}
     QTextBrowser#paper {{ border-radius: 12px; }}
-    QComboBox QAbstractItemView {{ border-radius: 12px; }}
-    QMenu {{ border-radius: 12px; border: 1px solid {t.border}; }}
-    QMenu::item {{ border-radius: 8px; }}
+    QComboBox QAbstractItemView {{ border-radius: {POPUP_RADIUS}px; }}
+    QMenu {{ border-radius: {POPUP_RADIUS}px; border: 1px solid {t.border}; padding: {POPUP_PADDING}px; }}
+    QMenu::item {{ border-radius: {POPUP_RADIUS - POPUP_PADDING}px; }}
     QToolTip {{ border-radius: 8px; }}
     QListWidget {{ border: none; background: transparent; }}
     QListWidget::item, QTreeWidget::item {{ border-radius: 10px; }}
@@ -344,6 +367,11 @@ def glass_on(t: Theme) -> bool:
     return GLASS and not is_high_contrast(t)
 
 
+def see_through_on(t: Theme) -> bool:
+    """Windows the desktop shows through: glass on, the user wants it, and the system can blur behind windows."""
+    return glass_on(t) and SEE_THROUGH and SEE_THROUGH_POSSIBLE
+
+
 def glass(t: Theme) -> str:
     """Liquid glass, Apple style (see `glass.py`): backgrounds stay plain and content cards stay solid; the chrome is
     glass. Menus, drop-down lists and tooltips are painted by `glass.py` with a real blur of what's under them, so
@@ -357,7 +385,7 @@ def glass(t: Theme) -> str:
     hover = rgba("#ffffff", 30) if t.dark else rgba(t.accent, 26)
     return f"""
     #sidebar {{ background: {t.sidebar}; border: 1px solid {line}; border-top: 1px solid {edge};
-        border-radius: 22px; margin: 10px 0 10px 10px; }}
+        border-radius: {OUTER_RADIUS}px; margin: {GAP}px 0 {GAP}px {GAP}px; }}
     QPushButton, QToolButton {{ background: {chip}; border: 1px solid {line}; border-top-color: {edge}; }}
     QPushButton:hover, QToolButton:hover {{ background: {hover}; }}
     QPushButton#primary {{ border: 1px solid {rgba("#ffffff", 60)}; }}
@@ -372,7 +400,27 @@ def glass(t: Theme) -> str:
     QComboBox QAbstractItemView {{ background: transparent; border: none; }}
     QToolTip {{ background: transparent; border: none; padding: 5px 8px; }}
     #settingsNav {{ background: {t.sidebar}; border: 1px solid {line}; border-top: 1px solid {edge};
-        border-radius: 22px; margin: 10px; }}
+        border-radius: {OUTER_RADIUS}px; margin: {GAP}px; }}
+    """ + see_through_css(t)
+
+
+def see_through_fill(t: Theme) -> str:
+    """The see-through window background (painted by `glass._SeeThrough`): mostly the theme's own, so words on it
+    stay readable over any wallpaper, with the desktop showing through, blurred."""
+    r, g, b = _rgb(t.bg)
+    return f"#{150 if t.dark else 145:02x}{r:02x}{g:02x}{b:02x}"
+
+
+def see_through_css(t: Theme) -> str:
+    """See-through windows: the window and dialog backgrounds let the desktop show through (the system blurs it:
+    Acrylic on Windows, Blur my Shell on GNOME), the sidebar more than the rest; cards stay solid so their words
+    read as well as ever."""
+    if not see_through_on(t):
+        return ""
+    return f"""
+    QMainWindow, QDialog {{ background: transparent; }}
+    #page, #scrollBody, QStackedWidget {{ background: transparent; }}
+    #sidebar, #settingsNav {{ background: {rgba(t.sidebar, 90 if t.dark else 110)}; }}
     """
 
 

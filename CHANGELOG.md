@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.10.0] - 2026-11-09
+
+Real transparency and corners that line up.
+
+- **See-through windows** (Windows Aero / macOS style): where the desktop can blur what's behind a window, main
+  windows and dialogs let it show through. Cards stay solid so their words read as well as ever, and the sidebar is the
+  most see-through. Windows 11 uses the system's Acrylic, Windows 10 its blur-behind. GNOME has no way for an app to ask
+  for this, so it works with the Blur my Shell extension: when it's on, the kit adds the app to its list. Apps get a
+  "See-through windows" switch (`ThemeManager.set_see_through`); `QUEZKA_SEE_THROUGH=0/1` forces it off or on. An app
+  can opt out with `glass.install(app, see_through=False)`.
+- **Nested corners**: one radius for every outer surface (`OUTER_RADIUS` 20: the sidebar, cards, the Settings list and
+  its floating header) and one gap (`GAP` 10) between them and from the window's edges. Things inside them get the
+  radius minus their padding (`NAV_RADIUS`, `TILE_RADIUS`, menu items), so the curves run side by side. Pages, sidebars
+  and rows of cards are lined up automatically as they're polished, in every app.
+- The Settings header now floats inset, as wide as the cards, and becomes glass when they scroll under it.
+
 ## [0.9.0] - 2026-11-08
 
 Liquid glass done the Apple way (`glass.py`). Backgrounds are plain again: the colour wash is gone, and content cards
