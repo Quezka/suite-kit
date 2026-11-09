@@ -226,6 +226,9 @@ def join_blur_my_shell(app_id: str) -> bool:
     # Blur my Shell can also fade whole windows, words and all. The app makes its own background see-through, so
     # the window itself stays fully opaque.
     _gsettings("set", BLUR_MY_SHELL_APPS, "opacity", "255")
+    # Dynamic blur redoes the blur behind the window on every frame the app draws, which makes scrolling lag
+    # (the user saw it in Quire). Static blur blurs the wallpaper once.
+    _gsettings("set", BLUR_MY_SHELL_APPS, "static-blur", "true")
     return True
 
 

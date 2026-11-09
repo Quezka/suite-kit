@@ -231,6 +231,7 @@ def test_joining_blur_my_shell_keeps_the_other_apps(monkeypatch):
     assert glass.join_blur_my_shell("io.github.quezka.Quire")
     assert lists["whitelist"] == "['org.gnome.Console', 'io.github.quezka.Quire']"
     assert ("set", glass.BLUR_MY_SHELL_APPS, "blur", "true") in calls
+    assert ("set", glass.BLUR_MY_SHELL_APPS, "static-blur", "true") in calls  # dynamic blur lags
     calls.clear()
     assert glass.join_blur_my_shell("io.github.quezka.Quire")
     assert not any(c[:3] == ("set", glass.BLUR_MY_SHELL_APPS, "whitelist") for c in calls)  # already there
