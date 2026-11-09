@@ -238,3 +238,39 @@ def test_joining_blur_my_shell_keeps_the_other_apps(monkeypatch):
     lists["whitelist"] = "@as []"
     assert glass.join_blur_my_shell("x.y")
     assert lists["whitelist"] == "['x.y']"
+
+
+def test_blur_my_shell_list_follows_see_through(monkeypatch):
+    """An app that isn't see-through leaves Blur my Shell's list: its blur costs the compositor every frame."""
+    from quezka_ui import glass
+    state = {"whitelist": "['io.github.quezka.Quire', 'Other']"}
+
+    def fake(*args):
+        if args[0] == "get":
+            return state.get(args[2], "")
+        state[args[2]] = args[3]
+        return ""
+
+    monkeypatch.setattr(glass, "_gsettings", fake)
+    assert glass.leave_blur_my_shell("io.github.quezka.Quire")
+    assert state["whitelist"] == "['Other']"
+    assert glass.join_blur_my_shell("io.github.quezka.Quire")
+    assert "'io.github.quezka.Quire'" in state["whitelist"]
+
+
+def test_see_through_hooks_hear_each_change(app):
+    from quezka_ui import theme
+    heard = []
+    theme.SEE_THROUGH_HOOKS.append(heard.append)
+    try:
+        manager = theme.manager()
+        before = len(heard)
+        possible = theme.SEE_THROUGH_POSSIBLE
+        theme.SEE_THROUGH_POSSIBLE = True
+        manager.set_see_through(True)
+        manager.set_see_through(False)
+        manager.set_see_through(False)
+        assert heard[before:] in ([True, False], [False])  # told once per change, never twice the same
+    finally:
+        theme.SEE_THROUGH_HOOKS.remove(heard.append)
+        theme.SEE_THROUGH_POSSIBLE = possible

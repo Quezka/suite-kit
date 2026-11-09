@@ -15,7 +15,7 @@ import subprocess
 import sys
 
 from PySide6.QtCore import QEvent, QObject, QPoint, QRect, QRectF, Qt
-from PySide6.QtGui import QColor, QImage, QLinearGradient, QPainter, QPainterPath, QPen
+from PySide6.QtGui import QColor, QImage, QLinearGradient, QPainter, QPainterPath, QPen, QRegion
 from PySide6.QtWidgets import QApplication, QDialog, QMainWindow, QMenu, QScrollArea, QVBoxLayout, QWidget
 
 from . import theme
@@ -149,11 +149,33 @@ class GlassHeader(QWidget):
         if not (theme.glass_on(t) and scrolled):
             return  # nothing under it yet: just the words on the background
         painter = QPainter(self)
-        viewport = self.area.viewport()
-        origin = viewport.mapFrom(self, QPoint(0, 0))
-        shot = viewport.grab(QRect(origin, self.size())).toImage()
-        paint_glass(painter, QRectF(self.rect()), blur(shot, 8), theme.OUTER_RADIUS, t)
+        paint_glass(painter, QRectF(self.rect()), self._backdrop(), theme.OUTER_RADIUS, t)
         painter.end()
+
+    def _backdrop(self) -> QImage:
+        """What scrolls under the header, blurred. It's drawn straight at an eighth of the size (a blur needs no
+        detail), which is far cheaper than grabbing it whole and shrinking it, and kept until the content moves."""
+        viewport = self.area.viewport()
+        # The header isn't inside the viewport, so map through the screen.
+        origin = viewport.mapFromGlobal(self.mapToGlobal(QPoint(0, 0)))
+        key = (self.area.verticalScrollBar().value(), origin.x(), origin.y(), self.width(), self.height(),
+               theme.current().dark)
+        if getattr(self, "_cached_key", None) == key:
+            return self._cached
+        scale = 8
+        small = QImage(max(1, self.width() // scale), max(1, self.height() // scale), QImage.Format_ARGB32_Premultiplied)
+        small.fill(QColor(theme.current().bg))
+        p = QPainter(small)
+        p.scale(1 / scale, 1 / scale)
+        viewport.render(p, QPoint(0, 0), QRegion(QRect(origin, self.size())))
+        p.end()
+        # One more halving and back softens the blocky look; the final stretch is smooth when it's painted.
+        soft = small.scaled(max(1, small.width() // 2), max(1, small.height() // 2), Qt.IgnoreAspectRatio,
+                            Qt.SmoothTransformation)
+        self._cached = soft.scaled(self.width() // 2 or 1, self.height() // 2 or 1, Qt.IgnoreAspectRatio,
+                                   Qt.SmoothTransformation)
+        self._cached_key = key
+        return self._cached
 
 
 # ---- See-through windows ----------------------------------------------------------------------------------------
@@ -230,6 +252,23 @@ def join_blur_my_shell(app_id: str) -> bool:
     # (the user saw it in Quire). Static blur blurs the wallpaper once.
     _gsettings("set", BLUR_MY_SHELL_APPS, "static-blur", "true")
     return True
+
+
+def leave_blur_my_shell(app_id: str) -> bool:
+    """Takes the app off Blur my Shell's list. Its blur behind a window is redone by the compositor on every frame,
+    even when the window is opaque and nothing shows through, so an app that isn't see-through must not be on it
+    (the user saw scrolling and moving windows lag with see-through switched off). True if it's off the list."""
+    if not app_id:
+        return False
+    current = _gsettings("get", BLUR_MY_SHELL_APPS, "whitelist")
+    if current is None:
+        return False
+    if f"'{app_id}'" not in current:
+        return True
+    names = [n.strip().strip("'") for n in current.strip("@as []").split(",") if n.strip().strip("'")]
+    names = [n for n in names if n != app_id]
+    listed = "[" + ", ".join(f"'{n}'" for n in names) + "]"
+    return _gsettings("set", BLUR_MY_SHELL_APPS, "whitelist", listed) is not None
 
 
 def apply_backdrop(window: QWidget, dark: bool) -> bool:
@@ -349,9 +388,12 @@ def install(app, see_through: bool = True) -> None:
     app.installEventFilter(popups)
     app._glass_popups = popups  # keep it alive
     theme.SEE_THROUGH_POSSIBLE = see_through and see_through_possible()
+    if sys.platform != "win32" and blur_my_shell_on():
+        # Joined or left once the saved setting is known (theme.install runs after this), and again when it changes.
+        def follow(on: bool) -> None:
+            (join_blur_my_shell if on else leave_blur_my_shell)(QApplication.desktopFileName())
+        theme.SEE_THROUGH_HOOKS.append(follow)
     if theme.SEE_THROUGH_POSSIBLE:
-        if sys.platform != "win32" and theme.SEE_THROUGH:
-            join_blur_my_shell(QApplication.desktopFileName())
         windows = _SeeThrough(app)
         app.installEventFilter(windows)
         app._glass_windows = windows

@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.11.1] - 2026-11-09
+
+- **Less lag:** an app only sits on Blur my Shell's list while its windows are see-through. The extension's blur
+  behind a window is redone by the compositor on every frame, even behind an opaque window, so with see-through
+  switched off (as in Quire) scrolling and moving windows lagged for nothing. Turning see-through on or off now
+  joins or leaves the list straight away.
+- The glass header over a scrolling page draws what's under it at an eighth of the size and keeps it until the
+  page moves, instead of grabbing the whole area on every repaint; it also blurs the right part of the page now
+  (it was mapped through the wrong widget).
+
 ## [0.11.0] - 2026-11-09
 
 The suite's new shared look (one design system for every app, `suite-rs/design/tokens.json`):

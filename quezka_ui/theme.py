@@ -50,6 +50,9 @@ RADIUS = 7
 GLASS = True  # follows ThemeManager.glass; module-level so `stylesheet(t)` keeps its signature
 SEE_THROUGH = True  # follows ThemeManager.see_through
 SEE_THROUGH_POSSIBLE = False  # set by `glass.install`: whether the desktop blurs what's behind a window
+# Called with True/False whenever see-through windows turn on or off (`glass.install` uses it to join or leave
+# Blur my Shell's list, whose blur costs the compositor on every frame even behind an opaque window).
+SEE_THROUGH_HOOKS: list = []
 
 # The shape of the Material/glass look, so every corner lines up. Outer surfaces (the sidebar, cards, the Settings
 # list, the floating header) share one radius and sit one GAP from the window's edge and from each other; something
@@ -135,6 +138,11 @@ class ThemeManager(QObject):
         GLASS = self.glass
         SEE_THROUGH = self.see_through
         self.app.setStyleSheet(stylesheet(self.theme))
+        on = see_through_on(self.theme)
+        if on != getattr(self, "_see_through_told", None):
+            self._see_through_told = on
+            for hook in SEE_THROUGH_HOOKS:
+                hook(on)
         self.changed.emit(self.theme)
 
 
