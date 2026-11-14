@@ -195,35 +195,37 @@ def test_on_wayland_nothing_clamps_a_button_menu():
     assert _NO_CLAMP.contains(QRect(0, 0, 8000, 8000))
 
 
-def test_a_sidebar_grows_to_fit_a_long_title_and_goes_icons_only_when_the_window_is_narrow():
+def test_a_sidebar_becomes_a_rail_wide_enough_for_its_names_and_icons_only_when_compact():
     from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QToolButton, QVBoxLayout, QWidget
-    from PySide6.QtGui import QFont
+    from PySide6.QtCore import Qt
     from quezka_ui import fit
     app = QApplication.instance() or QApplication([])
     window = QWidget()
     outer = QHBoxLayout(window)
     side = QFrame()
     layout = QVBoxLayout(side)
-    title = QLabel("Long app title")
-    big = QFont(); big.setPointSize(16); title.setFont(big)
+    title = QLabel("Ligature")
     layout.addWidget(title)
-    nav = QToolButton(objectName="nav", text="  Home")
-    layout.addWidget(nav)
+    short = QToolButton(objectName="nav", text="  Home")
+    long = QToolButton(objectName="nav", text="  Coursework and more")
+    layout.addWidget(short)
+    layout.addWidget(long)
     outer.addWidget(side)
     outer.addWidget(QWidget(), 1)
-    sized = fit.fit_sidebar(side, 120, compact_below=600)
+    sized = fit.fit_sidebar(side, 173, compact_below=600)
     window.resize(1200, 600)
     window.show()
     app.processEvents()
-    assert side.width() >= title.sizeHint().width() and side.width() > 120
+    assert not title.isVisible() and short.text() == "Home"
+    assert short.toolButtonStyle() == Qt.ToolButtonTextUnderIcon
+    assert side.width() >= max(fit.RAIL_MIN, long.sizeHint().width())
     window.resize(500, 600)
     app.processEvents()
-    assert sized.compact and side.width() == fit.COMPACT_WIDTH and not title.isVisible()
+    assert sized.compact and side.width() == fit.COMPACT_WIDTH and short.toolButtonStyle() == Qt.ToolButtonIconOnly
     window.resize(1200, 600)
     app.processEvents()
-    assert not sized.compact and title.isVisible()
+    assert not sized.compact and short.toolButtonStyle() == Qt.ToolButtonTextUnderIcon
     window.close()
-
 
 def test_size_classes_follow_material_breakpoints_and_report_only_changes():
     from PySide6.QtWidgets import QApplication, QWidget

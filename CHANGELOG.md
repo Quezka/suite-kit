@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.13.0] - 2026-11-14
+
+The suite's new look: **Material 3, tonal**, chosen from three concepts. No more liquid glass.
+
+- **Navigation rail** instead of the sidebar: each page an icon with its name under it, the current one a tonal
+  pill. The rail is as wide as its longest name needs; in a narrow window (under 600 px) it shows icons only.
+- **Tonal colours**: a soft, slightly cool background, white cards with big round corners (28 px) and no borders,
+  filled text boxes, rounder buttons with one filled colour for the main action. Text is darker than before.
+- **No glass, no see-through windows**: menus, lists and tooltips are solid; the page header gets a solid surface
+  once the page scrolls under it. Apps are taken off GNOME Blur my Shell's list (its blur cost every frame).
+  The "Glass look" and "See-through windows" settings are gone.
+- Calm on purpose (easier to focus): fewer lines and outlines, bigger targets, one filled button per screen.
+
 ## [0.12.0] - 2026-11-14
 
 - **Menus open where you click, at any interface size.** On Wayland an app can't know where its window is, so Qt

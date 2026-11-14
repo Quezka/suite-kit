@@ -12,9 +12,6 @@ copies each app had grown (plan: claude-memory `suite-unification-plan`).
 - Commit as arsdom15@gmail.com.
 - The look is Material 3 for everyone (`theme.material`, not applied in high contrast); Facet builds its own sheet at scale and reuses `theme.material`. Font: Manrope, four static weights in `assets/` (OFL), loaded by `fonts.load()` in `create_application`.
 - `kinetic.py`: glide after a trackpad flick. Trackpad means a scroll phase (Wayland) or a TouchPad device (X11), never pixel deltas. It feeds the scrollbar's own wheel handling, so per-row lists work.
-- Glass (0.9.0, Apple style): plain backgrounds, solid content cards, glass chrome. `theme.glass(t)` styles the floating sidebar and buttons and makes popups' sheet background transparent; `glass.py` paints menus/combo lists/tooltips with a real blur of the window under them (`_Popups`, installed by `create_application`; Facet installs it itself), `GlassHeader` floats over a scroll area and blurs what scrolls under it, and Windows 11 gets Mica. Never add a gradient wash or colour blobs as a background: the user rejected that as "AI slop" (2026-11-08).
+- Glass removed in 0.13.0 (user picked Material 3 tonal, 2026-11-14): `glass.py` only keeps `GlassHeader` (= `Header`, solid on scroll), `_Edges`, and leaving Blur my Shell. Never re-add blur or see-through.
 - Settings windows: build them from `quezka_ui.settings` (`SettingsWindow.section(title, icon).card().row/switch/wide`); editor dialogs call `dialog_shell(dialog, title)` after their layout is built.
-- Shape (0.10): every outer surface uses `theme.OUTER_RADIUS` and sits `theme.GAP` from the window edge and its
-  neighbours; inner things use the radius minus their padding. `glass._Edges` lines up pages, sidebars and rows of
-  cards when they're polished, so apps don't set their own outer margins or card spacing. See-through windows are
-  `glass._SeeThrough` (Acrylic on Windows, Blur my Shell on GNOME, painted fill from `theme.see_through_fill`).
+- Shape: outer surfaces `theme.OUTER_RADIUS` (28 since 0.13), `theme.GAP` apart; inner = radius minus padding. `glass._Edges` lines up pages and rails. Sidebars = M3 navigation rail via `fit.fit_sidebar` (labels under icons, icons only < 600 px).

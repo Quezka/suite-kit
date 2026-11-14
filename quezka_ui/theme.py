@@ -29,6 +29,7 @@ class Theme:
     danger: str
     success: str
     warning: str = "#d97706"
+    on_accent_soft: str = "#1e1a78"  # words and icons on accent_soft (the current page, a chosen tab)
     flag: str = "#e5484d"  # a brand's signature colour, used sparingly (the school's red in Gantry)
 
 
@@ -47,14 +48,8 @@ HIGH_LIGHT = _theme("high-light", False)
 HIGH_DARK = _theme("high-dark", True)
 
 RADIUS = 7
-GLASS = True  # follows ThemeManager.glass; module-level so `stylesheet(t)` keeps its signature
-SEE_THROUGH = True  # follows ThemeManager.see_through
-SEE_THROUGH_POSSIBLE = False  # set by `glass.install`: whether the desktop blurs what's behind a window
-# Called with True/False whenever see-through windows turn on or off (`glass.install` uses it to join or leave
-# Blur my Shell's list, whose blur costs the compositor on every frame even behind an opaque window).
-SEE_THROUGH_HOOKS: list = []
 
-# The shape of the Material/glass look, so every corner lines up. Outer surfaces (the sidebar, cards, the Settings
+# The shape of the Material 3 look, so every corner lines up. Outer surfaces (the sidebar, cards, the Settings
 # list, the floating header) share one radius and sit one GAP from the window's edge and from each other; something
 # inside one of them, touching its padding, gets the radius minus that padding, so the two curves run side by side
 # (Apple's "concentric" corners).
@@ -100,26 +95,12 @@ class ThemeManager(QObject):
         mode = QSettings().value("appearance", "system")
         self.mode = mode if mode in MODES else "system"
         self.contrast = str(QSettings().value("high_contrast", "false")).lower() == "true"
-        self.glass = str(QSettings().value("glass", "true")).lower() == "true"
-        self.see_through = str(QSettings().value("see_through", "true")).lower() == "true"
         app.styleHints().colorSchemeChanged.connect(lambda _scheme: self.apply())
         self.apply()
 
     def set_contrast(self, on: bool):
         self.contrast = on
         QSettings().setValue("high_contrast", "true" if on else "false")
-        self.apply()
-
-    def set_glass(self, on: bool):
-        """The glass look (see `glass.py`): glass chrome over plain backgrounds. High contrast stays solid."""
-        self.glass = on
-        QSettings().setValue("glass", "true" if on else "false")
-        self.apply()
-
-    def set_see_through(self, on: bool):
-        """See-through windows (see `glass.py`): the desktop shows through, blurred, where the system can blur it."""
-        self.see_through = on
-        QSettings().setValue("see_through", "true" if on else "false")
         self.apply()
 
     def set_mode(self, mode: str):
@@ -134,15 +115,7 @@ class ThemeManager(QObject):
             dark = self.mode == "dark"
         self.theme = (HIGH_DARK if dark else HIGH_LIGHT) if self.contrast else (DARK if dark else LIGHT)
         self.app.setPalette(palette(self.theme))
-        global GLASS, SEE_THROUGH
-        GLASS = self.glass
-        SEE_THROUGH = self.see_through
         self.app.setStyleSheet(stylesheet(self.theme))
-        on = see_through_on(self.theme)
-        if on != getattr(self, "_see_through_told", None):
-            self._see_through_told = on
-            for hook in SEE_THROUGH_HOOKS:
-                hook(on)
         self.changed.emit(self.theme)
 
 
@@ -277,52 +250,80 @@ def settings_css(t: Theme) -> str:
 
 
 def material(t: Theme) -> str:
-    """The Material 3 shape of things: a pill for the current page, no borders on cards, round buttons and
-    soft corners, one filled colour per screen. High contrast keeps its stark lines and borders. In Qt a
-    `border-radius` bigger than half the widget's height is ignored and the widget goes square, so buttons
-    stop at 12 px."""
+    """Material 3, tonal (the suite's look since 0.13): plain tonal grounds, solid cards with big soft corners and
+    no borders, a navigation rail whose current page is a tonal pill, filled inputs, round buttons with one filled
+    colour per screen (`primary`). Calm on purpose: few lines, big targets, nothing that blinks or shines.
+    High contrast keeps its stark lines and borders. In Qt a `border-radius` bigger than half the widget's
+    height is ignored and the widget goes square, so buttons stop at 14 px."""
     if t in (HIGH_LIGHT, HIGH_DARK):
         return ""
+    t = t if hasattr(t, "on_accent_soft") else replace_soft(t)
     return f"""
-    #sidebar {{ border-right: none; }}
+    #sidebar {{ background: {t.sidebar}; border: none; }}
     #brand {{ font-weight: 800; }}
-    QToolButton#nav {{ border-radius: {NAV_RADIUS}px; padding: 7px 12px; }}
-    QToolButton#nav:checked {{ color: {t.text}; font-weight: 700; }}
-    #card {{ border-radius: {OUTER_RADIUS}px; border: none; }}
-    #segmented {{ border: 1px solid {t.border}; border-radius: 12px; background: transparent; }}
-    QPushButton {{ border: none; border-radius: 12px; padding: 6px 14px; font-weight: 600; }}
-    QToolButton {{ border: none; border-radius: 12px; }}
-    QPushButton#primary {{ border-radius: 12px; font-weight: 700; padding: 6px 16px; }}
-    QPushButton#segment {{ border-radius: 10px; padding: 4px 10px; }}
-    QPushButton#segment:checked {{ background: {t.accent_soft}; color: {t.text}; border: none; }}
-    QToolButton#icon, QPushButton#icon, QToolButton#tool {{ border-radius: 12px; }}
+    QToolButton#nav {{ border-radius: 16px; padding: 8px 12px; color: {t.muted}; font-weight: 600; }}
+    QToolButton#nav[rail="true"] {{ padding: 6px 2px; font-size: {tokens.pt('caption')}pt; }}
+    QToolButton#nav:hover {{ background: {t.hover}; color: {t.text}; }}
+    QToolButton#nav:checked {{ background: {t.accent_soft}; color: {t.on_accent_soft}; font-weight: 700; }}
+    #card {{ background: {t.surface}; border-radius: {OUTER_RADIUS}px; border: none; }}
+    #segmented {{ border: 1px solid {t.border}; border-radius: 14px; background: transparent; }}
+    QPushButton {{ background: {t.raised}; border: none; border-radius: 14px; padding: 8px 18px; font-weight: 600; }}
+    QPushButton:hover {{ background: {t.hover}; }}
+    QToolButton {{ border: none; border-radius: 14px; }}
+    QPushButton#primary {{ background: {t.accent}; color: {t.on_accent}; border-radius: 14px; font-weight: 700;
+        padding: 8px 20px; }}
+    QPushButton#primary:hover {{ background: {t.accent_hover}; }}
+    QPushButton#segment {{ border-radius: 12px; padding: 5px 12px; background: transparent; }}
+    QPushButton#segment:checked {{ background: {t.accent_soft}; color: {t.on_accent_soft}; border: none; }}
+    QToolButton#icon, QPushButton#icon, QToolButton#tool {{ border-radius: 14px; background: transparent; }}
     QToolButton#startTile {{ border: none; border-radius: {TILE_RADIUS}px; }}
     QLineEdit, QPlainTextEdit, QTextEdit, QComboBox, QSpinBox, QDoubleSpinBox, QDateEdit, QTimeEdit {{
-        border-radius: 10px; }}
+        background: {t.raised}; border: 2px solid transparent; border-radius: 12px; padding: 6px 10px; }}
+    QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QComboBox:focus, QSpinBox:focus,
+    QDoubleSpinBox:focus, QDateEdit:focus, QTimeEdit:focus {{ border: 2px solid {t.accent}; }}
     QPlainTextEdit#code, QTextBrowser#code, QTextBrowser#sheetBody {{ border-radius: 12px; }}
+    QPlainTextEdit#bare, QTextBrowser#bare, QTextEdit#bare {{ border: none; background: transparent; }}
     QTextBrowser#paper {{ border-radius: 12px; }}
-    QComboBox QAbstractItemView {{ border-radius: {POPUP_RADIUS}px; }}
-    QMenu {{ border-radius: {POPUP_RADIUS}px; border: 1px solid {t.border}; padding: {POPUP_PADDING}px; }}
-    QMenu::item {{ border-radius: {POPUP_RADIUS - POPUP_PADDING}px; }}
-    QToolTip {{ border-radius: 8px; }}
+    QComboBox QAbstractItemView {{ background: {t.surface}; border: 1px solid {t.border};
+        border-radius: {POPUP_RADIUS}px; }}
+    QMenu {{ background: {t.surface}; border-radius: {POPUP_RADIUS}px; border: 1px solid {t.border};
+        padding: {POPUP_PADDING}px; }}
+    QMenu::item {{ border-radius: {POPUP_RADIUS - POPUP_PADDING}px; padding: 8px 16px 8px 12px; }}
+    QToolTip {{ background: {t.text}; color: {t.bg}; border: none; border-radius: 8px; padding: 5px 9px; }}
     QListWidget {{ border: none; background: transparent; }}
-    QListWidget::item, QTreeWidget::item {{ border-radius: 10px; }}
+    QListWidget::item, QTreeWidget::item {{ border-radius: 12px; padding: 7px 8px; }}
     QTableView {{ border: none; border-radius: 12px; }}
     QHeaderView::section {{ border-bottom: 1px solid {t.border}; border-right: none; font-weight: 600; }}
-    QCheckBox::indicator, QListWidget::indicator, QTreeWidget::indicator {{ border-radius: 5px; border-width: 2px; }}
-    QScrollBar::handle {{ border-radius: 2px; }}
+    QCheckBox::indicator, QListWidget::indicator, QTreeWidget::indicator {{ width: 16px; height: 16px;
+        border-radius: 5px; border-width: 2px; }}
+    QScrollBar::handle {{ border-radius: 3px; }}
     QTabWidget::pane {{ border: none; }}
     QTabBar {{ qproperty-drawBase: 0; }}
-    QTabBar::tab {{ background: transparent; color: {t.muted}; padding: 7px 14px; margin: 2px;
-        border-radius: 12px; font-weight: 600; }}
+    QTabBar::tab {{ background: transparent; color: {t.muted}; padding: 8px 16px; margin: 2px;
+        border-radius: 14px; font-weight: 600; }}
     QTabBar::tab:hover {{ background: {t.hover}; }}
-    QTabBar::tab:selected {{ background: {t.accent_soft}; color: {t.text}; }}
+    QTabBar::tab:selected {{ background: {t.accent_soft}; color: {t.on_accent_soft}; }}
     QProgressBar {{ background: {t.raised}; border: none; border-radius: 4px; max-height: 8px; color: transparent; }}
     QProgressBar::chunk {{ background: {t.accent}; border-radius: 4px; }}
     QSlider::groove:horizontal {{ background: {t.raised}; height: 6px; border-radius: 3px; }}
     QSlider::sub-page:horizontal {{ background: {t.accent}; border-radius: 3px; }}
-    QSlider::handle:horizontal {{ background: {t.accent}; width: 16px; margin: -5px 0; border-radius: 8px; }}
+    QSlider::handle:horizontal {{ background: {t.accent}; width: 18px; margin: -6px 0; border-radius: 9px; }}
+    #settingsNav {{ background: {t.sidebar}; border: none; }}
     """
+
+
+class _WithSoftInk:
+    """An app's own theme object without `on_accent_soft` (Facet's): the words colour stands in."""
+
+    def __init__(self, t):
+        self._t = t
+
+    def __getattr__(self, name):
+        return self._t.text if name == "on_accent_soft" else getattr(self._t, name)
+
+
+def replace_soft(t):
+    return _WithSoftInk(t)
 
 
 def _rgb(color: str) -> tuple[int, int, int]:
@@ -344,67 +345,6 @@ def rgba(color: str, alpha: int) -> str:
 
 def is_high_contrast(t: Theme) -> bool:
     return t in (HIGH_LIGHT, HIGH_DARK) or bool(getattr(t, "high_contrast", False))
-
-
-def glass_on(t: Theme) -> bool:
-    return GLASS and not is_high_contrast(t)
-
-
-def see_through_on(t: Theme) -> bool:
-    """Windows the desktop shows through: glass on, the user wants it, and the system can blur behind windows."""
-    return glass_on(t) and SEE_THROUGH and SEE_THROUGH_POSSIBLE
-
-
-def glass(t: Theme) -> str:
-    """Liquid glass, Apple style (see `glass.py`): backgrounds stay plain and content cards stay solid; the chrome is
-    glass. Menus, drop-down lists and tooltips are painted by `glass.py` with a real blur of what's under them, so
-    their style-sheet background is transparent. The sidebar floats as an inset panel with a light top edge, and
-    buttons catch the light along their top. Nothing invents a background."""
-    if not glass_on(t):
-        return ""
-    edge = rgba("#ffffff", 30 if t.dark else 255)
-    line = rgba("#ffffff", 14) if t.dark else rgba("#000000", 22)
-    chip = rgba("#ffffff", 16) if t.dark else rgba("#ffffff", 200)
-    hover = rgba("#ffffff", 30) if t.dark else rgba(t.accent, 26)
-    return f"""
-    #sidebar {{ background: {t.sidebar}; border: 1px solid {line}; border-top: 1px solid {edge};
-        border-radius: {OUTER_RADIUS}px; margin: {GAP}px 0 {GAP}px {GAP}px; }}
-    QPushButton, QToolButton {{ background: {chip}; border: 1px solid {line}; border-top-color: {edge}; }}
-    QPushButton:hover, QToolButton:hover {{ background: {hover}; }}
-    QPushButton#primary {{ border: 1px solid {rgba("#ffffff", 60)}; }}
-    QToolButton#nav, QToolButton#icon, QPushButton#icon, QToolButton#tool, QPushButton#segment,
-    QToolButton#settingsSection {{ background: transparent; border: none; }}
-    QToolButton#nav:hover, QToolButton#icon:hover, QPushButton#icon:hover, QToolButton#tool:hover,
-    QToolButton#settingsSection:hover {{ background: {hover}; }}
-    QToolButton#nav:checked, QToolButton#settingsSection:checked {{ background: {t.accent_soft}; }}
-    #segmented {{ background: {chip}; border: 1px solid {line}; border-top-color: {edge}; }}
-    QPushButton#segment:checked {{ background: {t.surface}; border: 1px solid {line}; border-top-color: {edge}; }}
-    QMenu {{ background: transparent; border: none; padding: 6px; }}
-    QComboBox QAbstractItemView {{ background: transparent; border: none; }}
-    QToolTip {{ background: transparent; border: none; padding: 5px 8px; }}
-    #settingsNav {{ background: {t.sidebar}; border: 1px solid {line}; border-top: 1px solid {edge};
-        border-radius: {OUTER_RADIUS}px; margin: {GAP}px; }}
-    """ + see_through_css(t)
-
-
-def see_through_fill(t: Theme) -> str:
-    """The see-through window background (painted by `glass._SeeThrough`): mostly the theme's own, so words on it
-    stay readable over any wallpaper, with the desktop showing through, blurred."""
-    r, g, b = _rgb(t.bg)
-    return f"#{150 if t.dark else 145:02x}{r:02x}{g:02x}{b:02x}"
-
-
-def see_through_css(t: Theme) -> str:
-    """See-through windows: the window and dialog backgrounds let the desktop show through (the system blurs it:
-    Acrylic on Windows, Blur my Shell on GNOME), the sidebar more than the rest; cards stay solid so their words
-    read as well as ever."""
-    if not see_through_on(t):
-        return ""
-    return f"""
-    QMainWindow, QDialog {{ background: transparent; }}
-    #page, #scrollBody, QStackedWidget {{ background: transparent; }}
-    #sidebar, #settingsNav {{ background: {rgba(t.sidebar, 90 if t.dark else 110)}; }}
-    """
 
 
 def stylesheet(t: Theme) -> str:
@@ -591,4 +531,4 @@ def stylesheet(t: Theme) -> str:
     QSplitter::handle {{ background: transparent; }}
     QCalendarWidget QWidget {{ alternate-background-color: {t.raised}; }}
     QCalendarWidget QToolButton {{ border: none; background: transparent; }}
-    """ + material(t) + settings_css(t) + glass(t) + "\n".join(rule(t) for rule in _extra_css)
+    """ + material(t) + settings_css(t) + "\n".join(rule(t) for rule in _extra_css)

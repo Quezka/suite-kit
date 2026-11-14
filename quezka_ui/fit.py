@@ -166,38 +166,69 @@ def install(app) -> None:
 
 
 SIDEBAR_MAX = 280  # a long translated title still leaves room for the page
-COMPACT_WIDTH = 56
-COMPACT_BELOW = 1000  # window width below which a sidebar shows only icons
+RAIL_MIN = 88  # material 3 navigation rail
+COMPACT_WIDTH = 64
+COMPACT_BELOW = 600  # window width below which the rail shows only icons (material 3 "compact")
 
 
 class _SidebarFit(QObject):
-    """Keeps a sidebar as wide as its widest text needs (never under its base width), and
-    icons-only while its window is narrow. The width is measured, not guessed: a title in a
-    bigger font or another language still fits."""
+    """A sidebar as a Material 3 navigation rail: each page an icon with its name under it, the current one a
+    tonal pill, no title (the app's icon stays on top). As wide as its longest page name needs, never under
+    RAIL_MIN; icons only while the window is compact. With `rail=False` (the Settings list) it stays a list of
+    names beside icons, as wide as its widest text needs."""
 
-    def __init__(self, frame: QFrame, base: int, compact_below: int | None):
+    def __init__(self, frame: QFrame, base: int, compact_below: int | None, rail: bool):
         super().__init__(frame)
-        self.frame, self.base, self.compact_below = frame, base, compact_below
+        self.frame, self.base, self.compact_below, self.rail = frame, base, compact_below, rail
         self.compact = False
         frame.installEventFilter(self)
         self._window = None
+        if rail:
+            self._style_rail()
+
+    def _nav_buttons(self):
+        from PySide6.QtWidgets import QToolButton
+        return self.frame.findChildren(QToolButton, "nav")
+
+    def _style_rail(self):
+        from PySide6.QtCore import QSize
+        from PySide6.QtWidgets import QLabel
+        for label in self.frame.findChildren(QLabel):
+            if label.text():  # the title and any other words; the icon (a picture) stays
+                label.setVisible(False)
+        for button in self._nav_buttons():
+            if button.property("rail") is not True:
+                button.setProperty("rail", True)
+                button.setText(button.text().strip())
+                button.setIconSize(QSize(24, 24))
+                button.style().unpolish(button)
+                button.style().polish(button)
+            button.setToolButtonStyle(Qt.ToolButtonIconOnly if self.compact else Qt.ToolButtonTextUnderIcon)
 
     def wide_width(self) -> int:
         frame = self.frame
         for child in frame.findChildren(QWidget):
             child.ensurePolished()
+        if self.rail:
+            widest = max((b.sizeHint().width() for b in self._nav_buttons()), default=0)
+            m = frame.layout().contentsMargins() if frame.layout() is not None else None
+            pad = (m.left() + m.right()) if m is not None else 0
+            return max(RAIL_MIN, min(widest + pad, SIDEBAR_MAX))
         layout = frame.layout()
         hint = layout.sizeHint().width() if layout is not None else 0
         return max(self.base, min(hint, SIDEBAR_MAX))
 
     def set_compact(self, compact: bool):
-        from PySide6.QtWidgets import QLabel, QToolButton
+        from PySide6.QtWidgets import QLabel
         self.compact = compact
-        for label in self.frame.findChildren(QLabel):
-            if label.text():  # the title and any other words; the icon (a picture) stays
-                label.setVisible(not compact)
-        for button in self.frame.findChildren(QToolButton, "nav"):
-            button.setToolButtonStyle(Qt.ToolButtonIconOnly if compact else Qt.ToolButtonTextBesideIcon)
+        if self.rail:
+            self._style_rail()
+        else:
+            for label in self.frame.findChildren(QLabel):
+                if label.text():
+                    label.setVisible(not compact)
+            for button in self._nav_buttons():
+                button.setToolButtonStyle(Qt.ToolButtonIconOnly if compact else Qt.ToolButtonTextBesideIcon)
         self.apply()
 
     def apply(self):
@@ -208,6 +239,8 @@ class _SidebarFit(QObject):
     def eventFilter(self, watched, event):
         kind = event.type()
         if watched is self.frame:
+            if kind == QEvent.ChildPolished and self.rail:
+                self._style_rail()  # a page button added after the rail was set up
             if kind == QEvent.Show and self._window is None and self.compact_below:
                 self._window = self.frame.window()
                 self._window.installEventFilter(self)
@@ -222,10 +255,11 @@ class _SidebarFit(QObject):
         return False
 
 
-def fit_sidebar(frame: QFrame, base: int, *, compact_below: int | None = COMPACT_BELOW) -> _SidebarFit:
-    """Size a sidebar to its content (see _SidebarFit). Call once its layout is set."""
-    frame.setFixedWidth(base)
-    fit = _SidebarFit(frame, base, compact_below)
+def fit_sidebar(frame: QFrame, base: int, *, compact_below: int | None = COMPACT_BELOW,
+                rail: bool = True) -> _SidebarFit:
+    """Make a sidebar a navigation rail sized to its content (see _SidebarFit). Call once its layout is set."""
+    frame.setFixedWidth(RAIL_MIN if rail else base)
+    fit = _SidebarFit(frame, base, compact_below, rail)
     frame._sidebar_fit = fit  # keep it alive
     return fit
 
@@ -236,7 +270,7 @@ COMPACT, MEDIUM, EXPANDED = "compact", "medium", "expanded"
 
 def size_class(width: int) -> str:
     """The window's size class: compact under 600 px, medium under 1000, expanded above."""
-    return COMPACT if width < 600 else MEDIUM if width < COMPACT_BELOW else EXPANDED
+    return COMPACT if width < COMPACT_BELOW else MEDIUM if width < 1000 else EXPANDED
 
 
 class _SizeClassWatch(QObject):

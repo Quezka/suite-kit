@@ -1,112 +1,26 @@
-"""Liquid glass, the way Apple does it: backgrounds stay plain, and the chrome that floats over content is glass.
-Menus, the lists that drop down from a box, tooltips and sticky headers blur what is really under them, with a
-light edge on top. Nothing here invents a background: what shows through is the app's own content.
-
-See-through windows (Windows Aero, macOS sidebars): where the desktop can blur what's behind a window, the main
-windows and dialogs let it show through. On Windows that's the system's Acrylic (Windows 11) or its blur-behind
-(Windows 10). On GNOME no app can ask for it; the Blur my Shell extension does it for the apps on its list, so when
-it's installed the kit puts the app on that list. Cards stay solid either way.
+"""What's left of the old glass layer: the floating page header (solid since 0.13: Material 3, no blur) and the
+shared outer edges of pages and sidebars. Apps that were on GNOME Blur my Shell's list are taken off it: its blur
+costs the compositor on every frame.
 """
 from __future__ import annotations
 
 import os
 import shutil
 import subprocess
-import sys
 
-from PySide6.QtCore import QEvent, QObject, QPoint, QRect, QRectF, Qt
-from PySide6.QtGui import QColor, QImage, QLinearGradient, QPainter, QPainterPath, QPen, QRegion
-from PySide6.QtWidgets import QApplication, QDialog, QMainWindow, QMenu, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtCore import QEvent, QObject, QPoint, QRectF, Qt
+from PySide6.QtGui import QColor, QPainter, QPainterPath
+from PySide6.QtWidgets import QApplication, QScrollArea, QVBoxLayout, QWidget
 
 from . import theme
 
-POPUP_RADIUS = theme.POPUP_RADIUS
-BLUR_STEPS = 9  # how much the backdrop is shrunk before it's stretched back: the blur's strength
-
-
-def blur(image: QImage, steps: int = BLUR_STEPS) -> QImage:
-    """A soft blur: shrinking the picture and stretching it back, twice, with smooth scaling. Cheap enough to run
-    every time a menu opens or a header repaints."""
-    if image.isNull() or image.width() < 2 or image.height() < 2:
-        return image
-    w, h = image.width(), image.height()
-    small = image.scaled(max(1, w // steps), max(1, h // steps), Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
-    small = small.scaled(max(1, w // (steps * 2)), max(1, h // (steps * 2)), Qt.IgnoreAspectRatio,
-                         Qt.SmoothTransformation)
-    middle = small.scaled(max(1, w // 2), max(1, h // 2), Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
-    return middle.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
-
-
-def paint_glass(painter: QPainter, rect: QRectF, backdrop: QImage | None, radius: float, t=None,
-                strength: float = 1.0) -> None:
-    """Glass over `backdrop` (what's behind, already blurred): the blur, a light tint so text stays readable, a
-    bright line along the top edge and a fine outline."""
-    t = t or theme.current()
-    path = QPainterPath()
-    path.addRoundedRect(rect, radius, radius)
-    painter.save()
-    painter.setRenderHint(QPainter.Antialiasing)
-    painter.setClipPath(path)
-    if backdrop is not None and not backdrop.isNull():
-        painter.drawImage(rect, backdrop)
-    tint = QColor(t.surface)
-    tint.setAlphaF((0.55 if t.dark else 0.50) * strength + (1 - strength))
-    painter.fillPath(path, tint)
-    # The light catching the top edge.
-    shine = QLinearGradient(rect.topLeft(), rect.bottomLeft())
-    top = QColor(255, 255, 255, 70 if t.dark else 150)
-    clear = QColor(255, 255, 255, 0)
-    shine.setColorAt(0.0, top)
-    shine.setColorAt(min(1.0, 18.0 / max(rect.height(), 1.0)), clear)
-    painter.fillPath(path, shine)
-    painter.restore()
-    painter.save()
-    painter.setRenderHint(QPainter.Antialiasing)
-    edge = QColor(255, 255, 255, 46) if t.dark else QColor(0, 0, 0, 34)
-    painter.setPen(QPen(edge, 1))
-    painter.drawRoundedRect(rect.adjusted(0.5, 0.5, -0.5, -0.5), radius, radius)
-    painter.restore()
-
-
-def _is_popup(widget: QWidget) -> bool:
-    name = widget.metaObject().className()
-    return isinstance(widget, QMenu) or name in ("QComboBoxPrivateContainer", "QTipLabel")
-
-
-def _backdrop_for(popup: QWidget) -> QImage | None:
-    """What the popup covers, taken from the window under it, blurred."""
-    parent = popup.parentWidget()
-    window = parent.window() if parent is not None else QApplication.activeWindow()
-    if window is None or window is popup:
-        return None
-    area = QRect(window.mapFromGlobal(popup.mapToGlobal(QPoint(0, 0))), popup.size())
-    shot = window.grab(area).toImage()
-    return blur(shot) if not shot.isNull() else None
-
-
-class _Popups(QObject):
-    """Makes every menu, drop-down list and tooltip of the app glass, as they appear."""
-
-    def eventFilter(self, obj, event):
-        if not isinstance(obj, QWidget) or not theme.glass_on(theme.current()):
-            return False
-        kind = event.type()
-        if kind == QEvent.Polish and _is_popup(obj) and not obj.property("glassy"):
-            obj.setProperty("glassy", True)
-            obj.setAttribute(Qt.WA_TranslucentBackground, True)
-        elif kind == QEvent.Show and obj.property("glassy"):
-            obj._glass_backdrop = _backdrop_for(obj)
-        elif kind == QEvent.Paint and obj.property("glassy"):
-            painter = QPainter(obj)
-            radius = POPUP_RADIUS - theme.POPUP_PADDING if obj.metaObject().className() == "QTipLabel" else POPUP_RADIUS
-            paint_glass(painter, QRectF(obj.rect()), getattr(obj, "_glass_backdrop", None), radius)
-            painter.end()
-        return False
+BLUR_MY_SHELL = "blur-my-shell@aunetx"
+BLUR_MY_SHELL_APPS = "org.gnome.shell.extensions.blur-my-shell.applications"
 
 
 class GlassHeader(QWidget):
-    """A header that floats over the top of a scroll area, inset like the cards: the content scrolls under it and
-    shows through, blurred, once there's something under it. Put widgets in `layout`. The scroll area's content
+    """A header that floats over the top of a scroll area, inset like the cards: once the content scrolls under it,
+    it gets a solid surface (Material 3's top app bar on scroll). Put widgets in `layout`. The scroll area's content
     should start below it (see `header_height`); `inset` is the gap to the scroll area's top, left and right."""
 
     def __init__(self, area: QScrollArea, parent: QWidget, inset: tuple[int, int, int] = (0, theme.GAP, theme.GAP)):
@@ -144,58 +58,19 @@ class GlassHeader(QWidget):
         self.raise_()
 
     def paintEvent(self, _event):
+        # m3 top app bar: no fill @ top; surface fill once content scroll under
+        if self.area.verticalScrollBar().value() <= 0:
+            return
         t = theme.current()
-        scrolled = self.area.verticalScrollBar().value() > 0
-        if not (theme.glass_on(t) and scrolled):
-            return  # nothing under it yet: just the words on the background
         painter = QPainter(self)
-        paint_glass(painter, QRectF(self.rect()), self._backdrop(), theme.OUTER_RADIUS, t)
+        painter.setRenderHint(QPainter.Antialiasing)
+        path = QPainterPath()
+        path.addRoundedRect(QRectF(self.rect()), theme.OUTER_RADIUS, theme.OUTER_RADIUS)
+        painter.fillPath(path, QColor(t.surface))
         painter.end()
 
-    def _backdrop(self) -> QImage:
-        """What scrolls under the header, blurred. It's drawn straight at an eighth of the size (a blur needs no
-        detail), which is far cheaper than grabbing it whole and shrinking it, and kept until the content moves."""
-        viewport = self.area.viewport()
-        # The header isn't inside the viewport, so map through the screen.
-        origin = viewport.mapFromGlobal(self.mapToGlobal(QPoint(0, 0)))
-        key = (self.area.verticalScrollBar().value(), origin.x(), origin.y(), self.width(), self.height(),
-               theme.current().dark)
-        if getattr(self, "_cached_key", None) == key:
-            return self._cached
-        scale = 8
-        small = QImage(max(1, self.width() // scale), max(1, self.height() // scale), QImage.Format_ARGB32_Premultiplied)
-        small.fill(QColor(theme.current().bg))
-        p = QPainter(small)
-        p.scale(1 / scale, 1 / scale)
-        viewport.render(p, QPoint(0, 0), QRegion(QRect(origin, self.size())))
-        p.end()
-        # One more halving and back softens the blocky look; the final stretch is smooth when it's painted.
-        soft = small.scaled(max(1, small.width() // 2), max(1, small.height() // 2), Qt.IgnoreAspectRatio,
-                            Qt.SmoothTransformation)
-        self._cached = soft.scaled(self.width() // 2 or 1, self.height() // 2 or 1, Qt.IgnoreAspectRatio,
-                                   Qt.SmoothTransformation)
-        self._cached_key = key
-        return self._cached
 
-
-# ---- See-through windows ----------------------------------------------------------------------------------------
-
-DWMWA_USE_IMMERSIVE_DARK_MODE = 20
-DWMWA_SYSTEMBACKDROP_TYPE = 38
-DWMSBT_TRANSIENTWINDOW = 3  # Acrylic: the desktop behind, blurred
-ACRYLIC_BUILD = 22621  # Windows 11 22H2: the first with a documented backdrop type
-BLUR_BEHIND_BUILD = 17134  # Windows 10 1803: blur behind through the accent policy
-BLUR_MY_SHELL = "blur-my-shell@aunetx"
-BLUR_MY_SHELL_APPS = "org.gnome.shell.extensions.blur-my-shell.applications"
-
-
-def windows_build() -> int:
-    if sys.platform != "win32":
-        return 0
-    try:
-        return sys.getwindowsversion().build
-    except AttributeError:
-        return 0
+Header = GlassHeader  # the name to use from 0.13 on
 
 
 def _gsettings(*args: str) -> str | None:
@@ -214,46 +89,6 @@ def _gsettings(*args: str) -> str | None:
     return done.stdout.strip() if done.returncode == 0 else None
 
 
-def blur_my_shell_on() -> bool:
-    """Whether GNOME's Blur my Shell extension is switched on (it can blur what's behind chosen apps)."""
-    if "GNOME" not in os.environ.get("XDG_CURRENT_DESKTOP", "").upper():
-        return False
-    enabled = _gsettings("get", "org.gnome.shell", "enabled-extensions") or ""
-    return BLUR_MY_SHELL in enabled
-
-
-def see_through_possible() -> bool:
-    forced = os.environ.get("QUEZKA_SEE_THROUGH")
-    if forced in ("0", "1"):
-        return forced == "1"
-    if sys.platform == "win32":
-        return windows_build() >= BLUR_BEHIND_BUILD
-    return blur_my_shell_on()
-
-
-def join_blur_my_shell(app_id: str) -> bool:
-    """Puts the app on Blur my Shell's list of apps it blurs behind, and switches that part on. True if it's there."""
-    if not app_id:
-        return False
-    current = _gsettings("get", BLUR_MY_SHELL_APPS, "whitelist")
-    if current is None:
-        return False
-    if f"'{app_id}'" not in current:
-        names = [n.strip().strip("'") for n in current.strip("@as []").split(",") if n.strip().strip("'")]
-        names.append(app_id)
-        listed = "[" + ", ".join(f"'{n}'" for n in names) + "]"
-        if _gsettings("set", BLUR_MY_SHELL_APPS, "whitelist", listed) is None:
-            return False
-    _gsettings("set", BLUR_MY_SHELL_APPS, "blur", "true")
-    # Blur my Shell can also fade whole windows, words and all. The app makes its own background see-through, so
-    # the window itself stays fully opaque.
-    _gsettings("set", BLUR_MY_SHELL_APPS, "opacity", "255")
-    # Dynamic blur redoes the blur behind the window on every frame the app draws, which makes scrolling lag
-    # (the user saw it in Quire). Static blur blurs the wallpaper once.
-    _gsettings("set", BLUR_MY_SHELL_APPS, "static-blur", "true")
-    return True
-
-
 def leave_blur_my_shell(app_id: str) -> bool:
     """Takes the app off Blur my Shell's list. Its blur behind a window is redone by the compositor on every frame,
     even when the window is opaque and nothing shows through, so an app that isn't see-through must not be on it
@@ -269,67 +104,6 @@ def leave_blur_my_shell(app_id: str) -> bool:
     names = [n for n in names if n != app_id]
     listed = "[" + ", ".join(f"'{n}'" for n in names) + "]"
     return _gsettings("set", BLUR_MY_SHELL_APPS, "whitelist", listed) is not None
-
-
-def apply_backdrop(window: QWidget, dark: bool) -> bool:
-    """Asks Windows to blur the desktop behind `window`; True if it agreed. Its background must be see-through."""
-    build = windows_build()
-    if build < BLUR_BEHIND_BUILD:
-        return False
-    try:
-        import ctypes
-        from ctypes import wintypes
-
-        hwnd = int(window.winId())
-        if build >= ACRYLIC_BUILD:
-            dwm = ctypes.windll.dwmapi
-            value = ctypes.c_int(1 if dark else 0)
-            dwm.DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ctypes.byref(value), ctypes.sizeof(value))
-            backdrop = ctypes.c_int(DWMSBT_TRANSIENTWINDOW)
-            return dwm.DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, ctypes.byref(backdrop),
-                                             ctypes.sizeof(backdrop)) == 0
-
-        class Accent(ctypes.Structure):
-            _fields_ = [("state", ctypes.c_int), ("flags", ctypes.c_int), ("colour", ctypes.c_uint),
-                        ("animation", ctypes.c_int)]
-
-        class Data(ctypes.Structure):
-            _fields_ = [("attribute", ctypes.c_int), ("data", ctypes.c_void_p), ("size", ctypes.c_size_t)]
-
-        accent = Accent(3, 0, 0, 0)  # ACCENT_ENABLE_BLURBEHIND
-        data = Data(19, ctypes.cast(ctypes.byref(accent), ctypes.c_void_p), ctypes.sizeof(accent))  # WCA_ACCENT_POLICY
-        call = ctypes.windll.user32.SetWindowCompositionAttribute
-        call.argtypes = [wintypes.HWND, ctypes.POINTER(Data)]
-        return bool(call(hwnd, ctypes.byref(data)))
-    except Exception:
-        return False
-
-
-def _is_window(obj) -> bool:
-    return isinstance(obj, (QMainWindow, QDialog)) and obj.isWindow()
-
-
-class _SeeThrough(QObject):
-    """Makes each main window and dialog see-through as it's first polished (and asks Windows for its blur)."""
-
-    def eventFilter(self, obj, event):
-        kind = event.type()
-        if kind == QEvent.Polish and _is_window(obj) and obj.property("seeThrough") is None:
-            on = theme.see_through_on(theme.current())
-            obj.setProperty("seeThrough", on)
-            if on:
-                obj.setAttribute(Qt.WA_TranslucentBackground, True)
-        elif kind == QEvent.Paint and _is_window(obj) and obj.property("seeThrough") is True:
-            # Qt skips a see-through window's own background, so it's painted here, before the window's content.
-            t = theme.current()
-            if theme.see_through_on(t):
-                painter = QPainter(obj)
-                painter.fillRect(obj.rect(), QColor(theme.see_through_fill(t)))
-                painter.end()
-        elif kind == QEvent.Show and _is_window(obj) and obj.property("seeThrough") is True and sys.platform == "win32":
-            if not apply_backdrop(obj, theme.current().dark):
-                obj.setAttribute(Qt.WA_TranslucentBackground, False)
-        return False
 
 
 def _layout_holding(widget: QWidget):
@@ -380,20 +154,10 @@ class _Edges(QObject):
 
 
 def install(app, see_through: bool = True) -> None:
-    """`see_through=False` for an app whose windows should never let the desktop through (a 3D viewer)."""
+    """Lines up pages and sidebars (see _Edges). `see_through` is ignored (kept so old callers still work)."""
     edges = _Edges(app)
     app.installEventFilter(edges)
     app._glass_edges = edges
-    popups = _Popups(app)
-    app.installEventFilter(popups)
-    app._glass_popups = popups  # keep it alive
-    theme.SEE_THROUGH_POSSIBLE = see_through and see_through_possible()
-    if sys.platform != "win32" and blur_my_shell_on():
-        # Joined or left once the saved setting is known (theme.install runs after this), and again when it changes.
-        def follow(on: bool) -> None:
-            (join_blur_my_shell if on else leave_blur_my_shell)(QApplication.desktopFileName())
-        theme.SEE_THROUGH_HOOKS.append(follow)
-    if theme.SEE_THROUGH_POSSIBLE:
-        windows = _SeeThrough(app)
-        app.installEventFilter(windows)
-        app._glass_windows = windows
+    if "GNOME" in os.environ.get("XDG_CURRENT_DESKTOP", "").upper():
+        # 0.12 and older put see-through apps on Blur my Shell's list: take this one off it
+        leave_blur_my_shell(QApplication.desktopFileName())

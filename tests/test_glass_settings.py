@@ -43,20 +43,6 @@ def test_text_stays_readable_on_every_surface(t):
     assert contrast(t.on_accent, t.accent) >= 4.5
 
 
-def test_glass_is_on_by_default_and_off_in_high_contrast(app):
-    m = theme.manager()
-    m.set_contrast(False)
-    assert m.glass
-    assert "border-radius: 20px; margin: 10px 0 10px 10px" in app.styleSheet()  # the floating glass sidebar
-    assert "qlineargradient(x1:0, y1:0, x2:1, y2:1" not in app.styleSheet()  # no colour wash behind anything
-    m.set_contrast(True)
-    assert theme.glass(m.theme) == ""
-    m.set_contrast(False)
-    m.set_glass(False)
-    assert theme.glass(m.theme) == ""
-    m.set_glass(True)
-
-
 def test_mix_and_rgba():
     assert theme.mix("#000000", "#ffffff", 0.5) == "#808080"
     assert theme.rgba("#ff0000", 10) == "rgba(255, 0, 0, 10)"
@@ -129,39 +115,6 @@ def test_every_app_dialog_gets_its_title_and_a_primary_button(app):
     d.close()
 
 
-def test_blur_keeps_the_size_and_softens():
-    from PySide6.QtGui import QImage, QColor
-    from quezka_ui.glass import blur
-    image = QImage(120, 60, QImage.Format_ARGB32)
-    image.fill(QColor("white"))
-    for x in range(0, 120, 2):
-        for y in range(60):
-            image.setPixelColor(x, y, QColor("black"))
-    soft = blur(image)
-    assert soft.size() == image.size()
-    grey = soft.pixelColor(60, 30).red()
-    assert 40 < grey < 215  # stripes became grey
-
-
-def test_menus_become_glass_and_paint(app):
-    from PySide6.QtWidgets import QMainWindow, QMenu
-    from quezka_ui import glass
-    glass.install(app)
-    theme.manager().set_contrast(False)
-    theme.manager().set_glass(True)
-    w = QMainWindow()
-    w.resize(300, 200)
-    w.show()
-    menu = QMenu(w)
-    menu.addAction("One")
-    menu.popup(w.mapToGlobal(w.rect().center()))
-    app.processEvents()
-    assert menu.property("glassy") is True
-    assert not menu.grab().isNull()
-    menu.close()
-    w.close()
-
-
 def test_a_section_header_floats_over_its_cards(app):
     from quezka_ui.settings import SettingsWindow
     w = SettingsWindow("Settings", "Close")
@@ -188,89 +141,27 @@ def test_corners_nest(app):
     m = theme.manager()
     m.set_contrast(False)
     sheet = app.styleSheet()
-    assert "#card { border-radius: 20px" in sheet
+    assert f"border-radius: {theme.OUTER_RADIUS}px; border: none" in sheet and theme.OUTER_RADIUS == 28
     assert "QMenu::item { border-radius: 8px" in sheet  # 14 px menu, 6 px padding
-    assert "22px" not in sheet and "border-radius: 16px" not in sheet
 
 
-def test_see_through_only_where_the_desktop_can_blur(app, monkeypatch):
+
+def test_no_glass_or_see_through_left(app):
     m = theme.manager()
     m.set_contrast(False)
-    monkeypatch.setattr(theme, "SEE_THROUGH_POSSIBLE", False)
-    m.apply()
-    assert "QMainWindow, QDialog { background: transparent" not in app.styleSheet()
-    monkeypatch.setattr(theme, "SEE_THROUGH_POSSIBLE", True)
-    m.set_mode("light")
-    assert "QMainWindow, QDialog { background: transparent" in app.styleSheet()
-    assert theme.see_through_fill(theme.current()) == "#91f4f4f2"
-    m.set_see_through(False)
-    assert "QMainWindow, QDialog { background: transparent" not in app.styleSheet()
-    m.set_see_through(True)
-    m.set_contrast(True)
-    assert "QMainWindow, QDialog { background: transparent" not in app.styleSheet()  # high contrast stays solid
-    m.set_contrast(False)
-    monkeypatch.setattr(theme, "SEE_THROUGH_POSSIBLE", False)
-    m.set_mode("system")
-
-
-def test_joining_blur_my_shell_keeps_the_other_apps(monkeypatch):
+    sheet = app.styleSheet()
+    assert "transparent; border: none; padding: 6px" not in sheet  # menus were see-through for the blur
+    assert not hasattr(m, "set_glass") and not hasattr(m, "set_see_through")
     from quezka_ui import glass
+    assert not hasattr(glass, "_Popups") and not hasattr(glass, "_SeeThrough")
 
+
+def test_leaving_blur_my_shell_keeps_the_other_apps(monkeypatch):
+    from quezka_ui import glass
     calls = []
-    lists = {"whitelist": "['org.gnome.Console']"}
-
     def fake(*args):
         calls.append(args)
-        if args[0] == "get":
-            return lists.get(args[2])
-        if args[0] == "set" and args[2] == "whitelist":
-            lists["whitelist"] = args[3]
-        return ""
-
-    monkeypatch.setattr(glass, "_gsettings", fake)
-    assert glass.join_blur_my_shell("io.github.quezka.Quire")
-    assert lists["whitelist"] == "['org.gnome.Console', 'io.github.quezka.Quire']"
-    assert ("set", glass.BLUR_MY_SHELL_APPS, "blur", "true") in calls
-    assert ("set", glass.BLUR_MY_SHELL_APPS, "static-blur", "true") in calls  # dynamic blur lags
-    calls.clear()
-    assert glass.join_blur_my_shell("io.github.quezka.Quire")
-    assert not any(c[:3] == ("set", glass.BLUR_MY_SHELL_APPS, "whitelist") for c in calls)  # already there
-    lists["whitelist"] = "@as []"
-    assert glass.join_blur_my_shell("x.y")
-    assert lists["whitelist"] == "['x.y']"
-
-
-def test_blur_my_shell_list_follows_see_through(monkeypatch):
-    """An app that isn't see-through leaves Blur my Shell's list: its blur costs the compositor every frame."""
-    from quezka_ui import glass
-    state = {"whitelist": "['io.github.quezka.Quire', 'Other']"}
-
-    def fake(*args):
-        if args[0] == "get":
-            return state.get(args[2], "")
-        state[args[2]] = args[3]
-        return ""
-
+        return "['org.other.App', 'io.github.quezka.Quire']" if args[0] == "get" else ""
     monkeypatch.setattr(glass, "_gsettings", fake)
     assert glass.leave_blur_my_shell("io.github.quezka.Quire")
-    assert state["whitelist"] == "['Other']"
-    assert glass.join_blur_my_shell("io.github.quezka.Quire")
-    assert "'io.github.quezka.Quire'" in state["whitelist"]
-
-
-def test_see_through_hooks_hear_each_change(app):
-    from quezka_ui import theme
-    heard = []
-    theme.SEE_THROUGH_HOOKS.append(heard.append)
-    try:
-        manager = theme.manager()
-        before = len(heard)
-        possible = theme.SEE_THROUGH_POSSIBLE
-        theme.SEE_THROUGH_POSSIBLE = True
-        manager.set_see_through(True)
-        manager.set_see_through(False)
-        manager.set_see_through(False)
-        assert heard[before:] in ([True, False], [False])  # told once per change, never twice the same
-    finally:
-        theme.SEE_THROUGH_HOOKS.remove(heard.append)
-        theme.SEE_THROUGH_POSSIBLE = possible
+    assert calls[-1] == ("set", glass.BLUR_MY_SHELL_APPS, "whitelist", "['org.other.App']")
