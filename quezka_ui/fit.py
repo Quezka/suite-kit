@@ -181,6 +181,8 @@ class _SidebarFit(QObject):
         super().__init__(frame)
         self.frame, self.base, self.compact_below, self.rail = frame, base, compact_below, rail
         self.compact = False
+        self.short = False  # window too low for labels under icons -> labels beside icons
+        self._tall_need = 0  # layout height the labels-under-icons rail needs
         frame.installEventFilter(self)
         self._window = None
         if rail:
@@ -199,11 +201,15 @@ class _SidebarFit(QObject):
         for button in self._nav_buttons():
             if button.property("rail") is not True:
                 button.setProperty("rail", True)
-                button.setText(button.text().strip())
                 button.setIconSize(QSize(24, 24))
                 button.style().unpolish(button)
                 button.style().polish(button)
-            button.setToolButtonStyle(Qt.ToolButtonIconOnly if self.compact else Qt.ToolButtonTextUnderIcon)
+            text = button.text().lstrip(" ")
+            text = f"  {text}" if self.short and not self.compact else text  # gap after icon when beside
+            if button.text() != text:
+                button.setText(text)
+            button.setToolButtonStyle(Qt.ToolButtonIconOnly if self.compact else
+                                      Qt.ToolButtonTextBesideIcon if self.short else Qt.ToolButtonTextUnderIcon)
 
     def wide_width(self) -> int:
         frame = self.frame
@@ -245,6 +251,8 @@ class _SidebarFit(QObject):
                 self._window = self.frame.window()
                 self._window.installEventFilter(self)
                 self.set_compact(self._window.width() < self.compact_below)
+            if kind == QEvent.Resize and self.rail and self._window is not None:
+                self._check_height()
             elif kind in (QEvent.Show, QEvent.LayoutRequest, QEvent.LanguageChange,
                           QEvent.StyleChange, QEvent.FontChange) and not self.compact:
                 self.apply()
@@ -253,6 +261,22 @@ class _SidebarFit(QObject):
             if compact != self.compact:
                 self.set_compact(compact)
         return False
+
+    def _too_short(self) -> bool:
+        """Labels under the icons would squeeze into each other at this height."""
+        layout = self.frame.layout()
+        if not self.rail or layout is None:
+            return False
+        if not self.short and not self.compact:
+            self._tall_need = layout.minimumSize().height()
+        return self.frame.height() < self._tall_need
+
+    def _check_height(self):
+        short = self._too_short()
+        if short != self.short:
+            self.short = short
+            self._style_rail()
+            self.apply()
 
 
 def fit_sidebar(frame: QFrame, base: int, *, compact_below: int | None = COMPACT_BELOW,

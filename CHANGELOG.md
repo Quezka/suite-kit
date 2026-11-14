@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.13.1] - 2026-11-14
+
+- **Navigation rail on short screens** (a 1366×768 laptop): when the names under the icons would squeeze into each
+  other, they move beside the icons instead, so every page stays readable.
+
 ## [0.13.0] - 2026-11-14
 
 The suite's new look: **Material 3, tonal**, chosen from three concepts. No more liquid glass.
