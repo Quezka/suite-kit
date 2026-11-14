@@ -238,7 +238,7 @@ class SettingsWindow(QDialog):
         root.setSpacing(0)
         root.addWidget(self._nav)
         root.addWidget(self.stack, 1)
-        self._nav.setFixedWidth(230)
+        fit.fit_sidebar(self._nav, 230, compact_below=None)  # a long section name widens it
         fit.clamp_dialog(self, width, height)
 
     def section(self, title: str, icon: str | None = None) -> SettingsSection:

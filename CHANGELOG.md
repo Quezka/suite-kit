@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.12.0] - 2026-11-14
+
+- **Menus open where you click, at any interface size.** On Wayland an app can't know where its window is, so Qt
+  pretended it sat in the top-left corner and pushed menus up and left to "keep them on screen", more so the
+  bigger the interface size (the screen looks smaller to it). Menus now open at the point asked for
+  (`fit.exec_menu`, `fit.popup_menu`; button menus too) and the desktop flips or slides them at the real screen edges.
+- **Sidebars fit their text.** `fit.fit_sidebar(frame, base)` measures the title and page names (bigger fonts,
+  other languages) and widens the sidebar up to 280 px; under 1000 px of window width it shows icons only.
+  The Settings window's list of sections does the same.
+- `fit.size_class(width)` and `fit.on_size_class(widget, callback)`: compact / medium / expanded at 600 and
+  1000 px, for pages that rearrange themselves as the window is resized.
+
 ## [0.11.1] - 2026-11-09
 
 - **Less lag:** an app only sits on Blur my Shell's list while its windows are see-through. The extension's blur

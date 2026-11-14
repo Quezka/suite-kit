@@ -173,3 +173,68 @@ def test_the_aligner_moves_a_real_menu_when_it_shows():
                                            menu.sizeHint().width(), menu.sizeHint().height(), area)
     menu.close()
     button.close()
+
+
+def test_exec_menu_remembers_the_point_and_the_aligner_forgets_it_once_shown():
+    from PySide6.QtCore import QPoint, QTimer
+    from PySide6.QtWidgets import QApplication, QMenu
+    from quezka_ui import fit
+    app = QApplication.instance() or QApplication([])
+    fit.install(app)
+    menu = QMenu()
+    menu.addAction("One")
+    QTimer.singleShot(50, menu.close)
+    fit.exec_menu(menu, QPoint(120, 80))
+    assert menu.property(fit.TARGET) is None  # used up by the show
+
+
+def test_on_wayland_nothing_clamps_a_button_menu():
+    from PySide6.QtCore import QRect
+    from quezka_ui.fit import _NO_CLAMP, MENU_GAP, menu_position
+    assert menu_position(1300, 700, 730, 200, 300, _NO_CLAMP).toTuple() == (1300, 730 + MENU_GAP)
+    assert _NO_CLAMP.contains(QRect(0, 0, 8000, 8000))
+
+
+def test_a_sidebar_grows_to_fit_a_long_title_and_goes_icons_only_when_the_window_is_narrow():
+    from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QToolButton, QVBoxLayout, QWidget
+    from PySide6.QtGui import QFont
+    from quezka_ui import fit
+    app = QApplication.instance() or QApplication([])
+    window = QWidget()
+    outer = QHBoxLayout(window)
+    side = QFrame()
+    layout = QVBoxLayout(side)
+    title = QLabel("Long app title")
+    big = QFont(); big.setPointSize(16); title.setFont(big)
+    layout.addWidget(title)
+    nav = QToolButton(objectName="nav", text="  Home")
+    layout.addWidget(nav)
+    outer.addWidget(side)
+    outer.addWidget(QWidget(), 1)
+    sized = fit.fit_sidebar(side, 120, compact_below=600)
+    window.resize(1200, 600)
+    window.show()
+    app.processEvents()
+    assert side.width() >= title.sizeHint().width() and side.width() > 120
+    window.resize(500, 600)
+    app.processEvents()
+    assert sized.compact and side.width() == fit.COMPACT_WIDTH and not title.isVisible()
+    window.resize(1200, 600)
+    app.processEvents()
+    assert not sized.compact and title.isVisible()
+    window.close()
+
+
+def test_size_classes_follow_material_breakpoints_and_report_only_changes():
+    from PySide6.QtWidgets import QApplication, QWidget
+    from quezka_ui import fit
+    assert [fit.size_class(w) for w in (400, 599, 600, 999, 1000)] == ["compact", "compact", "medium", "medium", "expanded"]
+    app = QApplication.instance() or QApplication([])
+    seen = []
+    widget = QWidget()
+    fit.on_size_class(widget, seen.append)
+    widget.resize(1200, 500); widget.show(); app.processEvents()
+    widget.resize(1100, 500); app.processEvents()
+    widget.resize(500, 500); app.processEvents()
+    assert seen == ["expanded", "compact"]
+    widget.close()
