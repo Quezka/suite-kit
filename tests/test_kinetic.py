@@ -167,3 +167,24 @@ def test_the_typeface_loads_with_its_weights_and_cyrillic(app):
     widths = {w: QFontMetricsF(QFont("Manrope", 40, w)).horizontalAdvance("Manrope Жизнь") for w in (400, 500, 600, 700)}
     assert widths[400] < widths[500] < widths[600] < widths[700]  # each is really its own weight
     assert QFontDatabase.WritingSystem.Cyrillic in QFontDatabase.writingSystems("Manrope")
+
+
+def test_the_window_seeing_each_event_first_does_not_hide_it_from_the_widget(scene):
+    # real wayland order: QWidgetWindow -> widgets, same event; window != widget -> skip it
+    area, glide, clock = scene
+    viewport, window = area.viewport(), area.windowHandle()
+    def both(event):
+        glide.eventFilter(window, event)
+        glide.eventFilter(viewport, event)
+    both(wheel(0, Qt.ScrollBegin))
+    for i in range(6):
+        clock.now += 0.016
+        event = wheel(-120, Qt.ScrollUpdate)
+        event.setTimestamp(i + 1)
+        both(event)
+        QApplication.sendEvent(area.verticalScrollBar(), wheel(-120, Qt.NoScrollPhase))
+    clock.now += 0.016
+    end = wheel(0, Qt.ScrollEnd)
+    end.setTimestamp(100)
+    both(end)
+    assert glide._timer.isActive()

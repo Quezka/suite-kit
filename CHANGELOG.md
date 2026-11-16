@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.15.0] - 2026-11-16
+
+- **Every app fits split screen** (half of a 1366×768 laptop): windows can shrink to 640 px wide; pages that need more room scroll sideways instead of pushing the window wider (`pages.PageStack`); tile rows wrap onto more lines (`flow.Flow`). The navigation rail shows only icons below 720 px.
+- **Trackpad glide works on Wayland**: a flick now keeps scrolling after your fingers lift (it never did on GNOME).
+- **Roomier text on small screens**: paddings and margins no longer shrink; only text and row heights get a little smaller.
+
 ## [0.14.0] - 2026-11-16
 
 - **Text and spacing follow the window's size**, live: on a small screen or a small window (a 1366×768 laptop) text and paddings get a little tighter instead of being cut or squeezed; on a big one nothing changes. No restart (`density.py`).

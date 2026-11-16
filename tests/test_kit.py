@@ -230,7 +230,7 @@ def test_a_sidebar_becomes_a_rail_wide_enough_for_its_names_and_icons_only_when_
 def test_size_classes_follow_material_breakpoints_and_report_only_changes():
     from PySide6.QtWidgets import QApplication, QWidget
     from quezka_ui import fit
-    assert [fit.size_class(w) for w in (400, 599, 600, 999, 1000)] == ["compact", "compact", "medium", "medium", "expanded"]
+    assert [fit.size_class(w) for w in (400, 719, 720, 999, 1000)] == ["compact", "compact", "medium", "medium", "expanded"]
     app = QApplication.instance() or QApplication([])
     seen = []
     widget = QWidget()

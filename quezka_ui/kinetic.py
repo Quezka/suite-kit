@@ -12,7 +12,7 @@ from time import monotonic
 
 from PySide6.QtCore import QEvent, QObject, QPoint, QPointF, Qt, QTimer
 from PySide6.QtGui import QInputDevice, QWheelEvent
-from PySide6.QtWidgets import QAbstractScrollArea, QApplication, QScrollBar
+from PySide6.QtWidgets import QAbstractScrollArea, QApplication, QScrollBar, QWidget
 
 TICK_MS = 16
 GLIDE_MS = 325.0  # how quickly the glide dies down: the time for the speed to fall to about a third
@@ -69,7 +69,8 @@ class Glide(QObject):
     def eventFilter(self, obj, event):
         kind = event.type()
         if kind == QEvent.Wheel:
-            if not self._injecting:
+            # QWidgetWindow sees each event first: no widget -> skip, else dedupe eats widget copy + crash
+            if not self._injecting and isinstance(obj, QWidget):
                 self._wheel(obj, event)
         elif kind in _STOPPERS and self._timer.isActive():
             self.stop()

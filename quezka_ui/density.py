@@ -1,5 +1,5 @@
 """Text and padding that follow the window's size: on a small screen (a 1366x768 laptop, a window made small)
-everything tightens a bit instead of being cut or squeezed; on a big one it stays as designed. Live: no restart.
+text and row heights tighten a bit (room around text stays) instead of being cut or squeezed; on a big one it stays as designed. Live: no restart.
 Works on the stylesheet (font sizes in pt, padding/margin/height in px) and the application font."""
 from __future__ import annotations
 
@@ -11,7 +11,8 @@ from PySide6.QtWidgets import QMainWindow
 # (min width, min height, factor): the first that fits wins
 STEPS = ((1100, 760, 1.0), (900, 640, 0.92), (0, 0, 0.85))
 _k = 1.0
-_SIZE = re.compile(r"((?:padding|margin|min-height|max-height|height|min-width|spacing)[\w-]*\s*:\s*)([^;}]+)")
+# padding/margin/spacing never shrink <- user: text tight @ small screen; only text + heights follow k
+_SIZE = re.compile(r"((?:min-height|max-height|height|min-width)[\w-]*\s*:\s*)([^;}]+)")
 _PX = re.compile(r"(\d+(?:\.\d+)?)px")
 _PT = re.compile(r"(font-size\s*:\s*)(\d+(?:\.\d+)?)pt")
 
@@ -28,7 +29,7 @@ def for_size(width: int, height: int) -> float:
 
 
 def scale_css(css: str, k: float | None = None) -> str:
-    """The stylesheet at density k: font sizes and paddings/margins/heights scaled; borders and radii kept."""
+    """The stylesheet at density k: font sizes and heights scaled; paddings, margins, borders and radii kept."""
     k = _k if k is None else k
     if k == 1.0:
         return css

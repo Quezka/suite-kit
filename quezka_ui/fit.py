@@ -13,8 +13,13 @@ def available(widget: QWidget | None = None):
     return screen.availableGeometry() if screen else None
 
 
+SPLIT_WIDTH = 640  # max min-width: half of 1366 minus borders -> * apps fit split screen
+SPLIT_HEIGHT = 480
+
+
 def clamp_window(window: QWidget, width: int, height: int, min_width: int, min_height: int):
-    """Size a window as asked, but never bigger than the screen."""
+    """Size a window as asked, but never bigger than the screen; small enough to snap to half of it."""
+    min_width, min_height = min(min_width, SPLIT_WIDTH), min(min_height, SPLIT_HEIGHT)
     area = available(window)
     if area is None:
         window.resize(width, height)
@@ -168,7 +173,7 @@ def install(app) -> None:
 SIDEBAR_MAX = 280  # a long translated title still leaves room for the page
 RAIL_MIN = 88  # material 3 navigation rail
 COMPACT_WIDTH = 64
-COMPACT_BELOW = 600  # window width below which the rail shows only icons (material 3 "compact")
+COMPACT_BELOW = 720  # rail icons only below this <- half 1366 split screen = ~683 needs room
 
 
 class _SidebarFit(QObject):
@@ -293,7 +298,7 @@ COMPACT, MEDIUM, EXPANDED = "compact", "medium", "expanded"
 
 
 def size_class(width: int) -> str:
-    """The window's size class: compact under 600 px, medium under 1000, expanded above."""
+    """The window's size class: compact under COMPACT_BELOW (720: split screen), medium under 1000, expanded above."""
     return COMPACT if width < COMPACT_BELOW else MEDIUM if width < 1000 else EXPANDED
 
 
