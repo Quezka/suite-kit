@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.15.1] - 2026-11-16
+
+- **Lists and menus open right under their box** with a chosen interface size on Wayland (GNOME): the size is now applied to text and spacing instead of Qt's scale factor, which put popups off to the side.
+
 ## [0.15.0] - 2026-11-16
 
 - **Every app fits split screen** (half of a 1366×768 laptop): windows can shrink to 640 px wide; pages that need more room scroll sideways instead of pushing the window wider (`pages.PageStack`); tile rows wrap onto more lines (`flow.Flow`). The navigation rail shows only icons below 720 px.

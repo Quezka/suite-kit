@@ -19,3 +19,4 @@ copies each app had grown (plan: claude-memory `suite-unification-plan`).
 - Kinetic: wheel events reach `QWidgetWindow` first -> filter skips non-`QWidget` (else dedupe ate the widget copy = no glide, bug till 0.15).
 - Density (0.14, paddings kept since 0.15): `density.py` scales stylesheet `font-size` pt + height px and the app font by main-window size (`STEPS`: >=1100x760 = 1.0, >=900x640 = 0.92, else 0.85), debounced 250 ms; `ThemeManager.apply` uses it. Borders and radii never scale.
 - `pages.PageStack` (0.15): main page stack; each page in a frameless scroll area, min width capped `MAX_MIN_WIDTH` 480; `widget/currentWidget/indexOf/setCurrentWidget` return pages. `flow.Flow`: wrapping row (tiles `fill`, buttons `fill=False`), min = widest item.
+- UI scale @ wayland (0.15.1): no `QT_SCALE_FACTOR` (fractional -> combo/menu popups drift, user saw it) -> `density.set_user_scale` scales font, heights + padding; x11/windows still qt factor.

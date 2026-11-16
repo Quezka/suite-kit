@@ -55,6 +55,13 @@ def _screen_height() -> int | None:
         QGuiApplication.setDesktopFileName(names[2])
 
 
+def _wayland() -> bool:
+    platform = os.environ.get("QT_QPA_PLATFORM", "")
+    if platform:
+        return platform.startswith("wayland")
+    return bool(os.environ.get("WAYLAND_DISPLAY")) or os.environ.get("XDG_SESSION_TYPE") == "wayland"
+
+
 def apply_before_app():
     """Set QT_SCALE_FACTOR from the choice. Does nothing when you set it yourself on the command line.
     A value this function set earlier doesn't count as yours: a restart from Settings starts the new
@@ -63,6 +70,15 @@ def apply_before_app():
     if current is not None and current != ours:
         return
     value = factor(chosen(), None)
+    if _wayland():
+        # fractional QT_SCALE_FACTOR @ wayland -> combo lists + menus open off their box (qt bug, seen 2026-11-16)
+        # => scale text/spacing via density instead
+        from . import density
+        density.set_user_scale(value)
+        if ours is not None:
+            os.environ.pop("QT_SCALE_FACTOR", None)
+            os.environ.pop(MARK, None)
+        return
     if value != 1.0:
         os.environ["QT_SCALE_FACTOR"] = os.environ[MARK] = f"{value:g}"
     elif ours is not None:

@@ -11,14 +11,22 @@ from PySide6.QtWidgets import QMainWindow
 # (min width, min height, factor): the first that fits wins
 STEPS = ((1100, 760, 1.0), (900, 640, 0.92), (0, 0, 0.85))
 _k = 1.0
+_user = 1.0  # settings ui scale @ wayland (no QT_SCALE_FACTOR there <- popups drift, see uiscale)
 # padding/margin/spacing never shrink <- user: text tight @ small screen; only text + heights follow k
 _SIZE = re.compile(r"((?:min-height|max-height|height|min-width)[\w-]*\s*:\s*)([^;}]+)")
+_PAD = re.compile(r"((?:padding|margin|spacing)[\w-]*\s*:\s*)([^;}]+)")
 _PX = re.compile(r"(\d+(?:\.\d+)?)px")
 _PT = re.compile(r"(font-size\s*:\s*)(\d+(?:\.\d+)?)pt")
 
 
 def factor() -> float:
-    return _k
+    return _k * _user
+
+
+def set_user_scale(k: float) -> None:
+    """The scale chosen in Settings, done here instead of by Qt (Wayland): text, heights and spacing."""
+    global _user
+    _user = k
 
 
 def for_size(width: int, height: int) -> float:
@@ -30,11 +38,15 @@ def for_size(width: int, height: int) -> float:
 
 def scale_css(css: str, k: float | None = None) -> str:
     """The stylesheet at density k: font sizes and heights scaled; paddings, margins, borders and radii kept."""
-    k = _k if k is None else k
-    if k == 1.0:
+    user = _user if k is None else 1.0
+    k = (_k if k is None else k) * user
+    if k == 1.0 and user == 1.0:
         return css
     css = _PT.sub(lambda m: f"{m[1]}{round(float(m[2]) * k, 2):g}pt", css)
-    return _SIZE.sub(lambda m: m[1] + _PX.sub(lambda p: f"{max(1, round(float(p[1]) * k))}px", m[2]), css)
+    css = _SIZE.sub(lambda m: m[1] + _PX.sub(lambda p: f"{max(1, round(float(p[1]) * k))}px", m[2]), css)
+    if user != 1.0:  # chosen scale also spaces; window-size density never shrinks spacing
+        css = _PAD.sub(lambda m: m[1] + _PX.sub(lambda p: f"{max(0, round(float(p[1]) * user))}px", m[2]), css)
+    return css
 
 
 class _Watcher(QObject):
