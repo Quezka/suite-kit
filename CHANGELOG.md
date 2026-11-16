@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.14.0] - 2026-11-16
+
+- **Text and spacing follow the window's size**, live: on a small screen or a small window (a 1366×768 laptop) text and paddings get a little tighter instead of being cut or squeezed; on a big one nothing changes. No restart (`density.py`).
+
 ## [0.13.1] - 2026-11-14
 
 - **Navigation rail on short screens** (a 1366×768 laptop): when the names under the icons would squeeze into each

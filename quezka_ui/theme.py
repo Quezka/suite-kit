@@ -115,8 +115,24 @@ class ThemeManager(QObject):
             dark = self.mode == "dark"
         self.theme = (HIGH_DARK if dark else HIGH_LIGHT) if self.contrast else (DARK if dark else LIGHT)
         self.app.setPalette(palette(self.theme))
-        self.app.setStyleSheet(stylesheet(self.theme))
+        from . import density
+        self.app.setStyleSheet(density.scale_css(stylesheet(self.theme)))
+        self._scale_font(density.factor())
         self.changed.emit(self.theme)
+
+    def _scale_font(self, k: float):
+        """The app font at density k (from the size it was set up with); themed classes too (see app.py)."""
+        base = getattr(self, "_base_font", None)
+        if base is None:
+            base = self._base_font = self.app.font()
+        font = type(base)(base)
+        if base.pointSizeF() > 0:
+            font.setPointSizeF(round(base.pointSizeF() * k, 2))
+        if self.app.font().pointSizeF() != font.pointSizeF():
+            self.app.setFont(font)
+            from .app import THEMED_CLASSES
+            for cls in THEMED_CLASSES:
+                self.app.setFont(font, cls)
 
 
 _manager: ThemeManager | None = None
@@ -125,6 +141,8 @@ _manager: ThemeManager | None = None
 def install(app: QApplication) -> ThemeManager:
     global _manager
     _manager = ThemeManager(app)
+    from . import density
+    density.install(app, _manager.apply)  # small window -> text and paddings a little tighter, live
     return _manager
 
 
